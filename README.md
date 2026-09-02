@@ -89,6 +89,10 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ## 📜 Version History
 
+### `v1.0.8` — September 2, 2026 at 2:15 PM EDT (ZPL Guard & Recommended macOS Driver Setup)
+- **Zebra ZPL Guard**: Automatically detects raw Zebra ZPL driver commands (`^XA`, `^XZ`, `~DGR`) and logs a clear instruction advising the user to select **`Generic PostScript Printer`** as the driver on macOS / Windows.
+- **Generic PostScript Pipeline**: When `Generic PostScript Printer` is chosen on macOS, CUPS outputs standard PDF/PostScript files which RolloPrint renders into high-resolution 4x6 203 DPI bitmaps for the Rollo X1038 thermal printer.
+
 ### `v1.0.7` — September 2, 2026 at 2:00 PM EDT (Multi-Port Listening & Universal Stream Extractor)
 - **Multi-Port Listening (9100 RAW, 631 IPP, 515 LPD)**: Opens listening sockets on Ports 9100, 631 (IPP/AirPrint), and 515 (LPD). Eliminates connection timeout and queue stalling when macOS CUPS attempts IPP or LPD handshakes.
 - **Universal Payload Extractor**: Scans incoming stream data for `%PDF-`, PNG, JPEG, and text headers even when wrapped in HTTP IPP, PostScript, or CUPS headers.

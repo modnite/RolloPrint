@@ -208,7 +208,14 @@ class NetworkPrintServer(
     }
 
     private fun processIncomingJobData(data: ByteArray, clientIp: String) {
-        // 1. Search for PDF Header (%PDF-) anywhere in stream (extracts PDF even if wrapped in HTTP IPP headers!)
+        // 1. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
+        val textSnippet = String(data.take(300).toByteArray(), Charsets.US_ASCII)
+        if (textSnippet.contains("^XA") || textSnippet.contains("~DGR") || textSnippet.contains("^XZ")) {
+            logger("REJECTED: Zebra ZPL payload received. On macOS, please set Printer Driver to 'Generic PostScript Printer'.")
+            return
+        }
+
+        // 2. Search for PDF Header (%PDF-) anywhere in stream (extracts PDF even if wrapped in HTTP IPP headers!)
         val pdfHeader = "%PDF-".toByteArray()
         val pdfStart = findByteSequence(data, pdfHeader)
         if (pdfStart != -1) {
