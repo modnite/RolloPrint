@@ -89,6 +89,11 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ## 📜 Version History
 
+### `v1.0.4` — September 2, 2026 at 1:15 PM EDT (Print Server Stability & Zero-Crash Architecture)
+- **Zero-Crash Network Server Architecture**: Replaced Foreground Service binding with direct background socket management, eliminating Android 14 `ForegroundServiceStartNotAllowedException` crashes and relaunch crash loops.
+- **Port 9100 Bind Safety**: `reuseAddress` socket configuration prevents `BindException` on Wi-Fi reconnection or fast server toggled states.
+- **Permanent Release Key Signed**: All APKs signed with permanent `rolloprint.jks` release certificate (v1, v2, v3, v4 schemes). *(Note: Uninstall any pre-1.0.3 debug build once to adopt the new release certificate; all future updates will install directly without uninstalling).*
+
 ### `v1.0.3` — September 2, 2026 at 1:00 PM EDT (Consistent Signing & Print Server Stability Fixes)
 - **Consistent Release Key Signing**: Configured permanent release keystore (`rolloprint.jks`) for both debug and release builds with v1, v2, v3, and v4 signature schemes enabled. Fixes APK update/over-install failures and bypasses Google Play Protect warning flags.
 - **Print Server Crash & Infinite Recursion Fix**: Resolved main thread recursive listener crash when toggling the network print server switch. Added socket `reuseAddress` flag and try-catch safety on server restart.

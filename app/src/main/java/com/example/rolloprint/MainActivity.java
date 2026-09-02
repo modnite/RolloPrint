@@ -2,18 +2,15 @@ package com.example.rolloprint;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.hardware.usb.UsbManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
@@ -35,34 +32,14 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private UsbPrintManager printManager;
+    private NetworkPrintServer networkPrintServer;
     private TextView tvLog;
     private ScrollView scrollView;
     private Bitmap lastRenderedBitmap;
 
     private MaterialSwitch switchServer;
     private TextView tvServerStatus;
-    private PrintServerService printServerService;
-    private boolean isServiceBound = false;
     private boolean isUpdatingSwitchProgrammatically = false;
-
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            PrintServerService.LocalBinder binder = (PrintServerService.LocalBinder) service;
-            printServerService = binder.getService();
-            isServiceBound = true;
-
-            if (switchServer.isChecked()) {
-                startPrintServer();
-            }
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            printServerService = null;
-            isServiceBound = false;
-        }
-    };
 
     private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         @Override
@@ -120,6 +97,29 @@ public class MainActivity extends AppCompatActivity {
             return null;
         });
 
+        networkPrintServer = new NetworkPrintServer(
+                this,
+                printManager,
+                text -> {
+                    log(text);
+                    return null;
+                },
+                (running, ip) -> {
+                    runOnUiThread(() -> {
+                        isUpdatingSwitchProgrammatically = true;
+                        if (running && ip != null) {
+                            tvServerStatus.setText("Status: Active on " + ip + ":9100 (mDNS Enabled)");
+                            if (!switchServer.isChecked()) switchServer.setChecked(true);
+                        } else {
+                            tvServerStatus.setText("Status: Disabled (Port 9100)");
+                            if (switchServer.isChecked()) switchServer.setChecked(false);
+                        }
+                        isUpdatingSwitchProgrammatically = false;
+                    });
+                    return null;
+                }
+        );
+
         btnSelect.setOnClickListener(v -> {
             log("--- Direct TSPL Label Print ---");
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -132,25 +132,11 @@ public class MainActivity extends AppCompatActivity {
 
             if (isChecked) {
                 requestNotificationPermissionIfNeeded();
-                if (isServiceBound && printServerService != null) {
-                    startPrintServer();
-                } else {
-                    Intent intent = new Intent(this, PrintServerService.class);
-                    intent.setAction(PrintServerService.ACTION_START);
-                    try {
-                        ContextCompat.startForegroundService(this, intent);
-                        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
-                    } catch (Exception e) {
-                        log("ERROR starting print server: " + e.getMessage());
-                        isUpdatingSwitchProgrammatically = true;
-                        switchServer.setChecked(false);
-                        isUpdatingSwitchProgrammatically = false;
-                    }
-                }
+                log("Starting Office Network Print Server on port 9100...");
+                networkPrintServer.start();
             } else {
-                if (isServiceBound && printServerService != null) {
-                    printServerService.stopServer();
-                }
+                log("Stopping Office Network Print Server...");
+                networkPrintServer.stop();
                 tvServerStatus.setText("Status: Disabled (Port 9100)");
             }
         });
@@ -170,32 +156,6 @@ public class MainActivity extends AppCompatActivity {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 102);
             }
-        }
-    }
-
-    private void startPrintServer() {
-        if (printServerService != null) {
-            printServerService.initializeServer(
-                    printManager,
-                    text -> {
-                        log(text);
-                        return null;
-                    },
-                    (running, ip) -> {
-                        runOnUiThread(() -> {
-                            isUpdatingSwitchProgrammatically = true;
-                            if (running && ip != null) {
-                                tvServerStatus.setText("Status: Active on " + ip + ":9100 (mDNS Enabled)");
-                                if (!switchServer.isChecked()) switchServer.setChecked(true);
-                            } else {
-                                tvServerStatus.setText("Status: Disabled (Port 9100)");
-                                if (switchServer.isChecked()) switchServer.setChecked(false);
-                            }
-                            isUpdatingSwitchProgrammatically = false;
-                        });
-                        return null;
-                    }
-            );
         }
     }
 
@@ -269,9 +229,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (isServiceBound) {
-            unbindService(serviceConnection);
-            isServiceBound = false;
+        if (networkPrintServer != null) {
+            networkPrintServer.stop();
         }
         try {
             unregisterReceiver(usbReceiver);
