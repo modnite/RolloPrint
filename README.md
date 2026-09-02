@@ -89,6 +89,9 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ## 📜 Version History
 
+### `v1.0.5` — September 2, 2026 at 1:25 PM EDT (Proactive Permission Prompting)
+- **Upfront Permission Prompts**: Proactively checks and requests all required runtime permissions (`POST_NOTIFICATIONS` for Android 13+, Storage permissions) in a batch upon first app launch (`onCreate`), eliminating permission gaps during print server activation or label sharing.
+
 ### `v1.0.4` — September 2, 2026 at 1:15 PM EDT (Print Server Stability & Zero-Crash Architecture)
 - **Zero-Crash Network Server Architecture**: Replaced Foreground Service binding with direct background socket management, eliminating Android 14 `ForegroundServiceStartNotAllowedException` crashes and relaunch crash loops.
 - **Port 9100 Bind Safety**: `reuseAddress` socket configuration prevents `BindException` on Wi-Fi reconnection or fast server toggled states.

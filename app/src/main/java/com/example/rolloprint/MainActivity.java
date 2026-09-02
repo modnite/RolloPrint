@@ -27,7 +27,9 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.materialswitch.MaterialSwitch;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
@@ -131,7 +133,6 @@ public class MainActivity extends AppCompatActivity {
             if (isUpdatingSwitchProgrammatically) return;
 
             if (isChecked) {
-                requestNotificationPermissionIfNeeded();
                 log("Starting Office Network Print Server on port 9100...");
                 networkPrintServer.start();
             } else {
@@ -147,15 +148,31 @@ public class MainActivity extends AppCompatActivity {
         log("Rollo X1038 Utility Loaded.");
         log("Ready to print PDF labels.");
 
+        // Proactively request all runtime permissions on first open
+        checkAndRequestAllPermissions();
+
         // Check if app was launched via Share / Open PDF intent
         handleIncomingIntent(getIntent());
     }
 
-    private void requestNotificationPermissionIfNeeded() {
+    private void checkAndRequestAllPermissions() {
+        List<String> permissionsNeeded = new ArrayList<>();
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 102);
+                permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
             }
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+        }
+
+        if (!permissionsNeeded.isEmpty()) {
+            log("Prompting for initial app permissions...");
+            ActivityCompat.requestPermissions(this, permissionsNeeded.toArray(new String[0]), 200);
         }
     }
 
