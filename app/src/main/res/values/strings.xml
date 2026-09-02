@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">RolloPrint</string>
+    <string name="select_pdf_print">Select PDF &amp; Print</string>
+    <string name="logs_header">Activity Log</string>
+    <string name="no_printer_found">No printer found</string>
+    <string name="permission_denied">Permission denied</string>
+    <string name="print_success">Data sent to printer</string>
+    <string name="driver_escpos">ESC/POS</string>
+    <string name="driver_tspl">TSPL</string>
+    <string name="test_text_print">Test Text</string>
+
+    <string-array name="icon_entries">
+        <item>Rollo Blue (Default)</item>
+        <item>Material You (White)</item>
+    </string-array>
+
+    <string-array name="icon_values">
+        <item>default</item>
+        <item>white</item>
+    </string-array>
+</resources>
