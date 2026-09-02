@@ -242,7 +242,15 @@ class NetworkPrintServer(
 
         val asciiHeader = String(data.take(500).toByteArray(), Charsets.US_ASCII)
 
-        // 3. Filter & Acknowledge CUPS / PostScript Feature Query Probes ONLY if NO PDF/Image document was attached
+        // 3. Check for Native TSPL Commands / Official Rollo Desktop Driver Stream
+        val upperHeader = asciiHeader.uppercase()
+        if (upperHeader.contains("SIZE ") || upperHeader.contains("BITMAP ") || upperHeader.contains("CLS") || upperHeader.contains("PRINT ")) {
+            logger("Detected native Rollo TSPL driver stream (${data.size} bytes) from $clientIp. Streaming to Rollo...")
+            printManager.printRawBytesAsync(data)
+            return
+        }
+
+        // 4. Filter & Acknowledge CUPS / PostScript Feature Query Probes ONLY if NO PDF/Image document was attached
         if (asciiHeader.contains("%!PS-Adobe") && (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery") || asciiHeader.contains("userdict"))) {
             logger("Acknowledged CUPS PostScript status probe from $clientIp.")
             try {
