@@ -89,6 +89,10 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ## 📜 Version History
 
+### `v1.0.11` — September 2, 2026 at 3:00 PM EDT (PostScript Document Size Unlocking & Universal Rendering)
+- **Removed 100KB Size Limit Constraint**: Removed legacy 100KB document size check that was inadvertently rejecting 200KB+ PostScript / CUPS network print jobs.
+- **Universal PostScript Document Renderer**: Parses and renders PostScript documents (`%!PS-Adobe`) of any size directly onto the 4x6 203 DPI thermal canvas for printing.
+
 ### `v1.0.10` — September 2, 2026 at 2:45 PM EDT (Selectable Activity Log & Probe Response Line)
 - **Selectable Activity Log Console**: Enabled `textIsSelectable="true"` on the activity log TextView. Users can now long-press and copy/paste log text directly from the app console for easy troubleshooting.
 - **PostScript Probe Socket Response**: Automatically returns query acknowledgment bytes (`False\r\nUnknown\r\n`) to CUPS when status probes arrive, allowing macOS CUPS to complete probe handshakes and proceed to streaming document PDF data.

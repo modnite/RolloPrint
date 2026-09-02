@@ -211,26 +211,7 @@ class NetworkPrintServer(
     }
 
     private fun processIncomingJobData(data: ByteArray, clientIp: String, socket: Socket) {
-        val asciiHeader = String(data.take(500).toByteArray(), Charsets.US_ASCII)
-
-        // 1. Filter & Acknowledge CUPS / PostScript Feature Query Probes (%!PS-Adobe-3.0 Query)
-        if (asciiHeader.contains("%!PS-Adobe") && (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery") || asciiHeader.contains("userdict"))) {
-            logger("Acknowledged CUPS PostScript status probe from $clientIp.")
-            try {
-                val output = socket.getOutputStream()
-                output.write("False\r\nUnknown\r\n".toByteArray())
-                output.flush()
-            } catch (_: Exception) {}
-            return
-        }
-
-        // 2. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
-        if (asciiHeader.contains("^XA") || asciiHeader.contains("~DGR") || asciiHeader.contains("^XZ")) {
-            logger("REJECTED: Zebra ZPL payload received. On macOS, please set Printer Driver to 'Generic PostScript Printer'.")
-            return
-        }
-
-        // 3. Search for PDF Header (%PDF-) anywhere in stream (extracts PDF even if wrapped in HTTP IPP headers!)
+        // 1. Search for PDF Header (%PDF-) ANYWHERE in stream (extracts PDF even if preceded by HTTP IPP headers!)
         val pdfHeader = "%PDF-".toByteArray()
         val pdfStart = findByteSequence(data, pdfHeader)
         if (pdfStart != -1) {
@@ -240,7 +221,7 @@ class NetworkPrintServer(
             return
         }
 
-        // 4. Search for PNG or JPEG image header anywhere in stream
+        // 2. Search for PNG or JPEG image header ANYWHERE in stream
         val pngHeader = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte())
         val pngStart = findByteSequence(data, pngHeader)
         if (pngStart != -1) {
@@ -259,16 +240,35 @@ class NetworkPrintServer(
             return
         }
 
-        // 5. Fallback for raw text / ASCII / PostScript label
-        if (isAsciiText(data)) {
-            logger("Extracted Text/PostScript label from $clientIp")
+        val asciiHeader = String(data.take(500).toByteArray(), Charsets.US_ASCII)
+
+        // 3. Filter & Acknowledge CUPS / PostScript Feature Query Probes ONLY if NO PDF/Image document was attached
+        if (asciiHeader.contains("%!PS-Adobe") && (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery") || asciiHeader.contains("userdict"))) {
+            logger("Acknowledged CUPS PostScript status probe from $clientIp.")
+            try {
+                val output = socket.getOutputStream()
+                output.write("False\r\nUnknown\r\n".toByteArray())
+                output.flush()
+            } catch (_: Exception) {}
+            return
+        }
+
+        // 4. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
+        if (asciiHeader.contains("^XA") || asciiHeader.contains("~DGR") || asciiHeader.contains("^XZ")) {
+            logger("REJECTED: Zebra ZPL payload received. On macOS, please set Printer Driver to 'Generic PCL Printer'.")
+            return
+        }
+
+        // 5. Fallback for raw text / PostScript document
+        if (asciiHeader.contains("%!PS-Adobe") || isAsciiText(data)) {
+            logger("Extracted PostScript/Text document (${data.size} bytes) from $clientIp")
             val textContent = String(data, Charsets.UTF_8)
             val cleanText = if (textContent.contains("\r\n\r\n")) textContent.substringAfter("\r\n\r\n") else textContent
             processTextJob(cleanText)
             return
         }
 
-        logger("REJECTED: Job from $clientIp is incompatible with Rollo 4x6 thermal printer.")
+        logger("REJECTED: Job (${data.size} bytes) from $clientIp is incompatible with Rollo 4x6 thermal printer.")
     }
 
     private fun findByteSequence(data: ByteArray, pattern: ByteArray): Int {
@@ -343,20 +343,37 @@ class NetworkPrintServer(
             isAntiAlias = true
         }
 
-        val lines = text.lines()
+        val lines = mutableListOf<String>()
+        if (text.contains("%!PS-Adobe")) {
+            val regex = Regex("\\((.*?)\\)")
+            val matches = regex.findAll(text)
+            for (match in matches) {
+                val str = match.groupValues[1].trim()
+                if (str.length > 2 && !str.startsWith("00") && !str.contains("Font") && !str.contains("Encoding")) {
+                    lines.add(str)
+                }
+            }
+            if (lines.isEmpty()) {
+                lines.addAll(text.lines().filter { !it.startsWith("%") && it.trim().isNotEmpty() })
+            }
+        } else {
+            lines.addAll(text.lines())
+        }
+
         var y = 60f
         for (line in lines) {
-            canvas.drawText(line, 40f, y, paint)
+            if (line.isBlank()) continue
+            canvas.drawText(line.take(55), 40f, y, paint)
             y += 36f
             if (y > targetHeight - 40) break
         }
 
-        logger("Network Text rendered to 4x6 label. Streaming to Rollo...")
+        logger("PostScript/Text rendered to 4x6 label. Streaming to Rollo...")
         printManager.printBitmapAsync(canvasBitmap)
     }
 
     private fun isAsciiText(data: ByteArray): Boolean {
-        if (data.size > 100000) return false
+        if (data.size > 10000000) return false
         var printableCount = 0
         val checkLen = Math.min(data.size, 500)
         for (i in 0 until checkLen) {
@@ -365,7 +382,7 @@ class NetworkPrintServer(
                 printableCount++
             }
         }
-        return (printableCount.toFloat() / checkLen) > 0.85
+        return (printableCount.toFloat() / checkLen) > 0.70
     }
 
     fun getLocalIpAddress(): String {
