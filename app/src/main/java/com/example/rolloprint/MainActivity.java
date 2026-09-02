@@ -1,13 +1,17 @@
 package com.example.rolloprint;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.hardware.usb.UsbManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
@@ -20,6 +24,8 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.materialswitch.MaterialSwitch;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -29,6 +35,30 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvLog;
     private ScrollView scrollView;
     private Bitmap lastRenderedBitmap;
+
+    private MaterialSwitch switchServer;
+    private TextView tvServerStatus;
+    private PrintServerService printServerService;
+    private boolean isServiceBound = false;
+
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            PrintServerService.LocalBinder binder = (PrintServerService.LocalBinder) service;
+            printServerService = binder.getService();
+            isServiceBound = true;
+
+            if (switchServer.isChecked()) {
+                startPrintServer();
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            printServerService = null;
+            isServiceBound = false;
+        }
+    };
 
     private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         @Override
@@ -78,6 +108,8 @@ public class MainActivity extends AppCompatActivity {
         tvLog = findViewById(R.id.tvLog);
         scrollView = findViewById(R.id.scrollView);
         Button btnSelect = findViewById(R.id.btnSelect);
+        switchServer = findViewById(R.id.switchServer);
+        tvServerStatus = findViewById(R.id.tvServerStatus);
 
         printManager = new UsbPrintManager(this, text -> {
             log(text);
@@ -91,6 +123,24 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(intent, 101);
         });
 
+        switchServer.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                if (isServiceBound && printServerService != null) {
+                    startPrintServer();
+                } else {
+                    Intent intent = new Intent(this, PrintServerService.class);
+                    intent.setAction(PrintServerService.ACTION_START);
+                    ContextCompat.startForegroundService(this, intent);
+                    bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+                }
+            } else {
+                if (isServiceBound && printServerService != null) {
+                    printServerService.stopServer();
+                }
+                tvServerStatus.setText("Status: Disabled (Port 9100)");
+            }
+        });
+
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
@@ -99,6 +149,30 @@ public class MainActivity extends AppCompatActivity {
 
         // Check if app was launched via Share / Open PDF intent
         handleIncomingIntent(getIntent());
+    }
+
+    private void startPrintServer() {
+        if (printServerService != null) {
+            printServerService.initializeServer(
+                    printManager,
+                    text -> {
+                        log(text);
+                        return null;
+                    },
+                    (running, ip) -> {
+                        runOnUiThread(() -> {
+                            if (running && ip != null) {
+                                tvServerStatus.setText("Status: Active on " + ip + ":9100 (mDNS Enabled)");
+                                switchServer.setChecked(true);
+                            } else {
+                                tvServerStatus.setText("Status: Disabled (Port 9100)");
+                                switchServer.setChecked(false);
+                            }
+                        });
+                        return null;
+                    }
+            );
+        }
     }
 
     @Override
@@ -115,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
 
         Uri pdfUri = null;
         if (Intent.ACTION_SEND.equals(action) && type != null) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 pdfUri = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class);
             } else {
                 pdfUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
@@ -171,6 +245,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (isServiceBound) {
+            unbindService(serviceConnection);
+            isServiceBound = false;
+        }
         try {
             unregisterReceiver(usbReceiver);
         } catch (Exception e) { }

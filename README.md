@@ -14,6 +14,8 @@
 - **Hardware-Optimized Bit Packing**: Implements custom luminance-based bit-packing with inverted bit polarity tailored specifically for Rollo thermal heads.
 - **Interactive Print Preview**: On-screen dialog previewing rendered labels before sending byte streams to the printer.
 - **Live Activity Console**: In-app real-time log scrollview for hardware diagnostics, transfer status, and error tracing.
+- **Office Network Print Server (Port 9100 + mDNS)**: Features a built-in TCP JetDirect/AppSocket print server and mDNS Zeroconf discovery (`_pdl-datastream._tcp.`). When toggled on, any Windows, Mac, or Linux PC on the local Wi-Fi network can discover and print directly to the Rollo thermal printer.
+- **Strict Format Guard & Auto-Scaling**: Incoming network print jobs (PDF, PNG, JPG, or Text) are automatically validated, filtered, and rendered onto 4x6 203 DPI canvases. Invalid or garbage print jobs are safely rejected.
 - **Display Cutout & Edge-to-Edge Awareness**: Seamlessly handles display cutouts (camera hole punches/notches) and system bar insets on modern phones, foldables, and Samsung DeX.
 - **Direct PDF Sharing (WhatsApp, Email, Files)**: Supports Android System Share menu (`ACTION_SEND` & `ACTION_VIEW`). Sharing a PDF directly launches RolloPrint and opens the print preview dialog immediately.
 - **Auto Hardware Detection**: Detects USB device attachment events (`USB_DEVICE_ATTACHED`) and prompts for Android USB permissions automatically.
@@ -86,6 +88,12 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 ---
 
 ## 📜 Version History
+
+### `v1.0.2` — Office Network Print Server (September 2026)
+- **Local Network Print Server (RAW Port 9100)**: Built-in TCP socket server allowing Windows, macOS, and Linux PCs on the local Wi-Fi network to send print jobs directly to the Rollo thermal printer.
+- **mDNS / Zeroconf Discovery**: Advertises `Rollo Thermal Printer` (`_pdl-datastream._tcp.`) so office devices can discover the printer automatically.
+- **Format Filter & Renderer**: Filters incoming network jobs (PDFs, Images, Text) and converts them to 816x1218 @ 203 DPI bitmaps before sending to the TSPL engine. Safely rejects incompatible formats.
+- **Foreground Service**: Uses a background-resilient Android Foreground Service with status notifications to keep the network print server active when the phone is locked.
 
 ### `v1.0.1` — Display Cutout & Share Sheet Integration (September 2026)
 - **Display Cutout / Notch Awareness**: Implemented edge-to-edge system bar and display cutout insets (`SHORT_EDGES` cutout mode) so UI elements avoid camera hole punches and gesture bars.
