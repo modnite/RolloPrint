@@ -14,12 +14,14 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.io.OutputStream
 import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketTimeoutException
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 
 class NetworkPrintServer(
@@ -28,47 +30,51 @@ class NetworkPrintServer(
     private val logger: (String) -> Unit,
     private val onStatusChanged: (Boolean, String?) -> Unit
 ) {
-    private var serverSocket: ServerSocket? = null
+    private val serverSockets = CopyOnWriteArrayList<ServerSocket>()
     @Volatile
     private var isRunning = false
-    private val serverExecutor = Executors.newSingleThreadExecutor()
+    private val serverExecutor = Executors.newCachedThreadPool()
     private var nsdManager: NsdManager? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
 
     companion object {
-        const val PORT = 9100
+        val PORTS = intArrayOf(9100, 631, 515)
         const val SERVICE_TYPE = "_pdl-datastream._tcp."
         const val SERVICE_NAME = "Rollo Thermal Printer"
     }
 
     fun start() {
         if (isRunning) return
-        serverExecutor.execute {
-            try {
-                serverSocket = ServerSocket().apply {
-                    reuseAddress = true
-                    bind(InetSocketAddress(PORT))
-                }
-                isRunning = true
-                val ipAddress = getLocalIpAddress()
-                logger("Print Server active at $ipAddress:$PORT")
-                onStatusChanged(true, ipAddress)
-                registerNsdService()
+        isRunning = true
+        val ipAddress = getLocalIpAddress()
+        logger("Print Server active on $ipAddress (Ports: 9100, 631, 515)")
+        onStatusChanged(true, ipAddress)
+        registerNsdService()
 
-                while (isRunning && serverSocket?.isClosed == false) {
-                    try {
-                        val clientSocket = serverSocket?.accept() ?: break
-                        handleClientSocket(clientSocket)
-                    } catch (e: Exception) {
-                        if (isRunning) {
-                            logger("Server Connection Error: ${e.message}")
+        for (port in PORTS) {
+            serverExecutor.execute {
+                try {
+                    val socket = ServerSocket().apply {
+                        reuseAddress = true
+                        bind(InetSocketAddress(port))
+                    }
+                    serverSockets.add(socket)
+
+                    while (isRunning && !socket.isClosed) {
+                        try {
+                            val clientSocket = socket.accept() ?: break
+                            handleClientSocket(clientSocket, port)
+                        } catch (e: Exception) {
+                            if (isRunning && !socket.isClosed) {
+                                logger("Server Port $port Error: ${e.message}")
+                            }
                         }
                     }
+                } catch (e: Exception) {
+                    if (isRunning) {
+                        logger("Failed to bind Port $port: ${e.message}")
+                    }
                 }
-            } catch (e: Exception) {
-                logger("Failed to start Print Server: ${e.message}")
-                isRunning = false
-                onStatusChanged(false, null)
             }
         }
     }
@@ -76,10 +82,12 @@ class NetworkPrintServer(
     fun stop() {
         isRunning = false
         unregisterNsdService()
-        try {
-            serverSocket?.close()
-        } catch (_: Exception) {}
-        serverSocket = null
+        for (ss in serverSockets) {
+            try {
+                ss.close()
+            } catch (_: Exception) {}
+        }
+        serverSockets.clear()
         logger("Print Server Stopped.")
         onStatusChanged(false, null)
     }
@@ -90,7 +98,7 @@ class NetworkPrintServer(
             val serviceInfo = NsdServiceInfo().apply {
                 serviceName = SERVICE_NAME
                 serviceType = SERVICE_TYPE
-                port = PORT
+                port = 9100
                 setAttribute("txtvers", "1")
                 setAttribute("ty", "Rollo X1038")
                 setAttribute("product", "(Rollo X1038)")
@@ -128,12 +136,11 @@ class NetworkPrintServer(
         } catch (_: Exception) {}
     }
 
-    private fun handleClientSocket(socket: Socket) {
+    private fun handleClientSocket(socket: Socket, port: Int) {
         val clientIp = socket.inetAddress?.hostAddress ?: "Unknown"
-        logger("Incoming network job from $clientIp")
+        logger("Incoming job connection from $clientIp on port $port")
         Executors.newSingleThreadExecutor().execute {
             try {
-                // Set 1.5-second socket timeout so read() unblocks when client finishes sending packets
                 socket.soTimeout = 1500
 
                 val input: InputStream = socket.getInputStream()
@@ -157,11 +164,23 @@ class NetworkPrintServer(
                     // Socket timeout triggers when client finishes streaming payload
                 }
 
+                val jobData = baos.toByteArray()
+
+                // If HTTP request (IPP/CUPS), send HTTP 200 OK back to client to unblock macOS CUPS queue
+                val isHttp = jobData.size > 4 && String(jobData.take(4).toByteArray(), Charsets.US_ASCII).startsWith("POST")
+                if (isHttp) {
+                    try {
+                        val output: OutputStream = socket.getOutputStream()
+                        val response = "HTTP/1.1 200 OK\r\nContent-Type: application/ipp\r\nContent-Length: 0\r\n\r\n"
+                        output.write(response.toByteArray())
+                        output.flush()
+                    } catch (_: Exception) {}
+                }
+
                 try {
                     socket.close()
                 } catch (_: Exception) {}
 
-                val jobData = baos.toByteArray()
                 if (jobData.isEmpty()) {
                     logger("Received empty job payload from $clientIp")
                     return@execute
@@ -170,53 +189,80 @@ class NetworkPrintServer(
                 logger("Processing network print job (${jobData.size} bytes) from $clientIp...")
                 processIncomingJobData(jobData, clientIp)
             } catch (e: Exception) {
-                logger("Error processing network print job: ${e.message}")
+                logger("Error processing network job from $clientIp: ${e.message}")
             }
         }
     }
 
     private fun isCompleteDocument(data: ByteArray): Boolean {
         if (data.size < 10) return false
-        val checkLen = Math.min(data.size, 50)
+        val checkLen = Math.min(data.size, 100)
         val tailBytes = data.copyOfRange(data.size - checkLen, data.size)
         val tailStr = String(tailBytes, Charsets.US_ASCII)
-        
-        // PDF EOF signature
+
         if (tailStr.contains("%%EOF")) return true
-        // PNG End chunk signature
         if (tailStr.contains("IEND")) return true
-        // JPEG End of Image signature (0xFF 0xD9)
-        if (data.size >= 2 && (data[data.size - 2].toInt() and 0xFF) == 0xFF && (data[data.size - 1].toInt() and 0xFF) == 0xD9) return true
+        if ((data[data.size - 2].toInt() and 0xFF) == 0xFF && (data[data.size - 1].toInt() and 0xFF) == 0xD9) return true
 
         return false
     }
 
     private fun processIncomingJobData(data: ByteArray, clientIp: String) {
-        // 1. Check for PDF Header (%PDF-)
-        if (data.size >= 5 && data[0] == '%'.code.toByte() && data[1] == 'P'.code.toByte() &&
-            data[2] == 'D'.code.toByte() && data[3] == 'F'.code.toByte()) {
-            logger("Received PDF job from $clientIp (${data.size} bytes)")
-            processPdfJob(data)
+        // 1. Search for PDF Header (%PDF-) anywhere in stream (extracts PDF even if wrapped in HTTP IPP headers!)
+        val pdfHeader = "%PDF-".toByteArray()
+        val pdfStart = findByteSequence(data, pdfHeader)
+        if (pdfStart != -1) {
+            val pdfData = data.copyOfRange(pdfStart, data.size)
+            logger("Extracted PDF label (${pdfData.size} bytes) from $clientIp")
+            processPdfJob(pdfData)
             return
         }
 
-        // 2. Check for PNG or JPEG image header
-        val isPng = data.size >= 8 && data[0] == 0x89.toByte() && data[1] == 'P'.code.toByte()
-        val isJpg = data.size >= 3 && data[0] == 0xFF.toByte() && data[1] == 0xD8.toByte()
-        if (isPng || isJpg) {
-            logger("Received Image job from $clientIp (${data.size} bytes)")
-            processImageJob(data)
+        // 2. Search for PNG or JPEG image header anywhere in stream
+        val pngHeader = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte())
+        val pngStart = findByteSequence(data, pngHeader)
+        if (pngStart != -1) {
+            val pngData = data.copyOfRange(pngStart, data.size)
+            logger("Extracted PNG image (${pngData.size} bytes) from $clientIp")
+            processImageJob(pngData)
             return
         }
 
-        // 3. Fallback for raw text / ASCII label
+        val jpgHeader = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
+        val jpgStart = findByteSequence(data, jpgHeader)
+        if (jpgStart != -1) {
+            val jpgData = data.copyOfRange(jpgStart, data.size)
+            logger("Extracted JPEG image (${jpgData.size} bytes) from $clientIp")
+            processImageJob(jpgData)
+            return
+        }
+
+        // 3. Fallback for raw text / ASCII / PostScript label
         if (isAsciiText(data)) {
-            logger("Received Text job from $clientIp")
-            processTextJob(String(data, Charsets.UTF_8))
+            logger("Extracted Text/PostScript label from $clientIp")
+            val textContent = String(data, Charsets.UTF_8)
+            // Filter out HTTP headers if present
+            val cleanText = if (textContent.contains("\r\n\r\n")) textContent.substringAfter("\r\n\r\n") else textContent
+            processTextJob(cleanText)
             return
         }
 
         logger("REJECTED: Job from $clientIp is incompatible with Rollo 4x6 thermal printer.")
+    }
+
+    private fun findByteSequence(data: ByteArray, pattern: ByteArray): Int {
+        if (pattern.isEmpty() || data.size < pattern.size) return -1
+        for (i in 0..data.size - pattern.size) {
+            var match = true
+            for (j in pattern.indices) {
+                if (data[i + j] != pattern[j]) {
+                    match = false
+                    break
+                }
+            }
+            if (match) return i
+        }
+        return -1
     }
 
     private fun processPdfJob(pdfBytes: ByteArray) {

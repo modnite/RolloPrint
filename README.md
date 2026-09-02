@@ -89,6 +89,11 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ## 📜 Version History
 
+### `v1.0.7` — September 2, 2026 at 2:00 PM EDT (Multi-Port Listening & Universal Stream Extractor)
+- **Multi-Port Listening (9100 RAW, 631 IPP, 515 LPD)**: Opens listening sockets on Ports 9100, 631 (IPP/AirPrint), and 515 (LPD). Eliminates connection timeout and queue stalling when macOS CUPS attempts IPP or LPD handshakes.
+- **Universal Payload Extractor**: Scans incoming stream data for `%PDF-`, PNG, JPEG, and text headers even when wrapped in HTTP IPP, PostScript, or CUPS headers.
+- **HTTP IPP Handshake Response**: Returns HTTP 200 OK headers to client queries, unblocking macOS/Windows print queues instantly.
+
 ### `v1.0.6` — September 2, 2026 at 1:40 PM EDT (Network Job Pipeline & Stream Unblocking)
 - **Socket Unblocking (`soTimeout` + Document EOF Signatures)**: Added `socket.soTimeout = 1500` and `isCompleteDocument()` detection (`%%EOF`, `IEND`, `0xFF 0xD9`). Fixes network jobs remaining stuck in "Active" queues on macOS / Windows / Linux CUPS when client streams remain open.
 - **Enhanced mDNS / Zeroconf Attributes**: Added full mDNS JetDirect TXT record attributes (`pdl`, `rp=raw`, `qtotal=1`, `usb_MFG=Rollo`, `usb_MDL=X1038`) for seamless auto-discovery across office networks.
