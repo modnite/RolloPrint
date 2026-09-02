@@ -19,6 +19,7 @@ import java.net.InetSocketAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.util.concurrent.Executors
 
 class NetworkPrintServer(
@@ -50,7 +51,7 @@ class NetworkPrintServer(
                 }
                 isRunning = true
                 val ipAddress = getLocalIpAddress()
-                logger("Network Print Server active at $ipAddress:$PORT")
+                logger("Print Server active at $ipAddress:$PORT")
                 onStatusChanged(true, ipAddress)
                 registerNsdService()
 
@@ -65,7 +66,7 @@ class NetworkPrintServer(
                     }
                 }
             } catch (e: Exception) {
-                logger("Failed to start Network Print Server: ${e.message}")
+                logger("Failed to start Print Server: ${e.message}")
                 isRunning = false
                 onStatusChanged(false, null)
             }
@@ -77,9 +78,9 @@ class NetworkPrintServer(
         unregisterNsdService()
         try {
             serverSocket?.close()
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
         serverSocket = null
-        logger("Network Print Server Stopped.")
+        logger("Print Server Stopped.")
         onStatusChanged(false, null)
     }
 
@@ -90,21 +91,26 @@ class NetworkPrintServer(
                 serviceName = SERVICE_NAME
                 serviceType = SERVICE_TYPE
                 port = PORT
+                setAttribute("txtvers", "1")
                 setAttribute("ty", "Rollo X1038")
                 setAttribute("product", "(Rollo X1038)")
-                setAttribute("pdl", "application/pdf,image/png,image/jpeg")
-                setAttribute("note", "RolloPrint Office Server")
+                setAttribute("pdl", "application/pdf,image/png,image/jpeg,application/octet-stream")
+                setAttribute("rp", "raw")
+                setAttribute("note", "RolloPrint Server")
+                setAttribute("qtotal", "1")
+                setAttribute("usb_MFG", "Rollo")
+                setAttribute("usb_MDL", "X1038")
             }
 
             registrationListener = object : NsdManager.RegistrationListener {
-                override fun onServiceRegistered(NsdServiceInfo: NsdServiceInfo) {
-                    logger("mDNS Service Discovery Registered: ${NsdServiceInfo.serviceName}")
+                override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
+                    logger("mDNS Service Discovery Registered: ${serviceInfo.serviceName}")
                 }
-                override fun onRegistrationFailed(arg0: NsdServiceInfo, arg1: Int) {
-                    logger("mDNS Registration Warning: $arg1")
+                override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                    logger("mDNS Registration Warning: $errorCode")
                 }
-                override fun onServiceUnregistered(arg0: NsdServiceInfo) {}
-                override fun onUnregistrationFailed(arg0: NsdServiceInfo, arg1: Int) {}
+                override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {}
+                override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {}
             }
 
             nsdManager?.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener)
@@ -119,34 +125,70 @@ class NetworkPrintServer(
                 nsdManager?.unregisterService(registrationListener)
                 registrationListener = null
             }
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
     }
 
     private fun handleClientSocket(socket: Socket) {
         val clientIp = socket.inetAddress?.hostAddress ?: "Unknown"
-        logger("Incoming network print job from $clientIp")
+        logger("Incoming network job from $clientIp")
         Executors.newSingleThreadExecutor().execute {
             try {
+                // Set 1.5-second socket timeout so read() unblocks when client finishes sending packets
+                socket.soTimeout = 1500
+
                 val input: InputStream = socket.getInputStream()
                 val baos = ByteArrayOutputStream()
                 val buffer = ByteArray(4096)
                 var bytesRead: Int
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    baos.write(buffer, 0, bytesRead)
-                }
-                val jobData = baos.toByteArray()
-                socket.close()
 
+                try {
+                    while (isRunning) {
+                        bytesRead = input.read(buffer)
+                        if (bytesRead == -1) break
+                        baos.write(buffer, 0, bytesRead)
+
+                        val currentData = baos.toByteArray()
+                        if (isCompleteDocument(currentData)) {
+                            logger("Complete label document signature detected (${currentData.size} bytes)")
+                            break
+                        }
+                    }
+                } catch (_: SocketTimeoutException) {
+                    // Socket timeout triggers when client finishes streaming payload
+                }
+
+                try {
+                    socket.close()
+                } catch (_: Exception) {}
+
+                val jobData = baos.toByteArray()
                 if (jobData.isEmpty()) {
                     logger("Received empty job payload from $clientIp")
                     return@execute
                 }
 
+                logger("Processing network print job (${jobData.size} bytes) from $clientIp...")
                 processIncomingJobData(jobData, clientIp)
             } catch (e: Exception) {
-                logger("Error receiving network job: ${e.message}")
+                logger("Error processing network print job: ${e.message}")
             }
         }
+    }
+
+    private fun isCompleteDocument(data: ByteArray): Boolean {
+        if (data.size < 10) return false
+        val checkLen = Math.min(data.size, 50)
+        val tailBytes = data.copyOfRange(data.size - checkLen, data.size)
+        val tailStr = String(tailBytes, Charsets.US_ASCII)
+        
+        // PDF EOF signature
+        if (tailStr.contains("%%EOF")) return true
+        // PNG End chunk signature
+        if (tailStr.contains("IEND")) return true
+        // JPEG End of Image signature (0xFF 0xD9)
+        if (data.size >= 2 && (data[data.size - 2].toInt() and 0xFF) == 0xFF && (data[data.size - 1].toInt() and 0xFF) == 0xD9) return true
+
+        return false
     }
 
     private fun processIncomingJobData(data: ByteArray, clientIp: String) {
@@ -186,7 +228,7 @@ class NetworkPrintServer(
         tempFile.delete()
 
         if (bitmap != null) {
-            logger("Network PDF converted to 4x6 label. Sending to Rollo...")
+            logger("Network PDF converted to 4x6 label. Streaming to Rollo...")
             printManager.printBitmapAsync(bitmap)
         } else {
             logger("ERROR: Failed to render network PDF.")
@@ -217,7 +259,7 @@ class NetworkPrintServer(
 
         canvas.drawBitmap(rawBitmap, null, RectF(left, top, left + renderW, top + renderH), null)
 
-        logger("Network Image fitted to 4x6 203DPI canvas. Sending to Rollo...")
+        logger("Network Image fitted to 4x6 203DPI canvas. Streaming to Rollo...")
         printManager.printBitmapAsync(canvasBitmap)
     }
 
@@ -242,7 +284,7 @@ class NetworkPrintServer(
             if (y > targetHeight - 40) break
         }
 
-        logger("Network Text rendered to 4x6 label. Sending to Rollo...")
+        logger("Network Text rendered to 4x6 label. Streaming to Rollo...")
         printManager.printBitmapAsync(canvasBitmap)
     }
 
@@ -272,7 +314,7 @@ class NetworkPrintServer(
                     }
                 }
             }
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
         return "127.0.0.1"
     }
 }
