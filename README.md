@@ -89,6 +89,10 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ## 📜 Version History
 
+### `v1.0.9` — September 2, 2026 at 2:30 PM EDT (CUPS PostScript Probe Filter & Clean macOS Printing)
+- **CUPS PostScript Feature Query Probe Filter**: Detects and silently acknowledges macOS CUPS background PostScript status queries (`%!PS-Adobe-3.0 Query` / `%%?BeginFeatureQuery`). Prevents macOS hardware probes from printing feature query text onto thermal labels.
+- **Clean Label Pipeline**: When printing actual documents/labels from macOS using `Generic PostScript Printer`, `RolloPrint` extracts the `%PDF-` document payload, renders the 4x6 203 DPI label bitmap, and streams TSPL directly to the Rollo X1038 printer.
+
 ### `v1.0.8` — September 2, 2026 at 2:15 PM EDT (ZPL Guard & Recommended macOS Driver Setup)
 - **Zebra ZPL Guard**: Automatically detects raw Zebra ZPL driver commands (`^XA`, `^XZ`, `~DGR`) and logs a clear instruction advising the user to select **`Generic PostScript Printer`** as the driver on macOS / Windows.
 - **Generic PostScript Pipeline**: When `Generic PostScript Printer` is chosen on macOS, CUPS outputs standard PDF/PostScript files which RolloPrint renders into high-resolution 4x6 203 DPI bitmaps for the Rollo X1038 thermal printer.

@@ -208,9 +208,16 @@ class NetworkPrintServer(
     }
 
     private fun processIncomingJobData(data: ByteArray, clientIp: String) {
-        // 1. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
-        val textSnippet = String(data.take(300).toByteArray(), Charsets.US_ASCII)
-        if (textSnippet.contains("^XA") || textSnippet.contains("~DGR") || textSnippet.contains("^XZ")) {
+        val asciiHeader = String(data.take(500).toByteArray(), Charsets.US_ASCII)
+
+        // 1. Filter out CUPS / PostScript Feature Query Probes (%!PS-Adobe-3.0 Query)
+        if (asciiHeader.contains("%!PS-Adobe") && (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery") || asciiHeader.contains("userdict"))) {
+            logger("Acknowledged CUPS PostScript status probe from $clientIp (ignored non-printable query).")
+            return
+        }
+
+        // 2. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
+        if (asciiHeader.contains("^XA") || asciiHeader.contains("~DGR") || asciiHeader.contains("^XZ")) {
             logger("REJECTED: Zebra ZPL payload received. On macOS, please set Printer Driver to 'Generic PostScript Printer'.")
             return
         }
