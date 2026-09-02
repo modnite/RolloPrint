@@ -89,6 +89,10 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ## 📜 Version History
 
+### `v1.0.10` — September 2, 2026 at 2:45 PM EDT (Selectable Activity Log & Probe Response Line)
+- **Selectable Activity Log Console**: Enabled `textIsSelectable="true"` on the activity log TextView. Users can now long-press and copy/paste log text directly from the app console for easy troubleshooting.
+- **PostScript Probe Socket Response**: Automatically returns query acknowledgment bytes (`False\r\nUnknown\r\n`) to CUPS when status probes arrive, allowing macOS CUPS to complete probe handshakes and proceed to streaming document PDF data.
+
 ### `v1.0.9` — September 2, 2026 at 2:30 PM EDT (CUPS PostScript Probe Filter & Clean macOS Printing)
 - **CUPS PostScript Feature Query Probe Filter**: Detects and silently acknowledges macOS CUPS background PostScript status queries (`%!PS-Adobe-3.0 Query` / `%%?BeginFeatureQuery`). Prevents macOS hardware probes from printing feature query text onto thermal labels.
 - **Clean Label Pipeline**: When printing actual documents/labels from macOS using `Generic PostScript Printer`, `RolloPrint` extracts the `%PDF-` document payload, renders the 4x6 203 DPI label bitmap, and streams TSPL directly to the Rollo X1038 printer.

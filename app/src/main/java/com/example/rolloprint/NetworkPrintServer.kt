@@ -177,17 +177,20 @@ class NetworkPrintServer(
                     } catch (_: Exception) {}
                 }
 
-                try {
-                    socket.close()
-                } catch (_: Exception) {}
-
                 if (jobData.isEmpty()) {
                     logger("Received empty job payload from $clientIp")
+                    try {
+                        socket.close()
+                    } catch (_: Exception) {}
                     return@execute
                 }
 
                 logger("Processing network print job (${jobData.size} bytes) from $clientIp...")
-                processIncomingJobData(jobData, clientIp)
+                processIncomingJobData(jobData, clientIp, socket)
+
+                try {
+                    socket.close()
+                } catch (_: Exception) {}
             } catch (e: Exception) {
                 logger("Error processing network job from $clientIp: ${e.message}")
             }
@@ -207,12 +210,17 @@ class NetworkPrintServer(
         return false
     }
 
-    private fun processIncomingJobData(data: ByteArray, clientIp: String) {
+    private fun processIncomingJobData(data: ByteArray, clientIp: String, socket: Socket) {
         val asciiHeader = String(data.take(500).toByteArray(), Charsets.US_ASCII)
 
-        // 1. Filter out CUPS / PostScript Feature Query Probes (%!PS-Adobe-3.0 Query)
+        // 1. Filter & Acknowledge CUPS / PostScript Feature Query Probes (%!PS-Adobe-3.0 Query)
         if (asciiHeader.contains("%!PS-Adobe") && (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery") || asciiHeader.contains("userdict"))) {
-            logger("Acknowledged CUPS PostScript status probe from $clientIp (ignored non-printable query).")
+            logger("Acknowledged CUPS PostScript status probe from $clientIp.")
+            try {
+                val output = socket.getOutputStream()
+                output.write("False\r\nUnknown\r\n".toByteArray())
+                output.flush()
+            } catch (_: Exception) {}
             return
         }
 
@@ -222,7 +230,7 @@ class NetworkPrintServer(
             return
         }
 
-        // 2. Search for PDF Header (%PDF-) anywhere in stream (extracts PDF even if wrapped in HTTP IPP headers!)
+        // 3. Search for PDF Header (%PDF-) anywhere in stream (extracts PDF even if wrapped in HTTP IPP headers!)
         val pdfHeader = "%PDF-".toByteArray()
         val pdfStart = findByteSequence(data, pdfHeader)
         if (pdfStart != -1) {
@@ -232,7 +240,7 @@ class NetworkPrintServer(
             return
         }
 
-        // 2. Search for PNG or JPEG image header anywhere in stream
+        // 4. Search for PNG or JPEG image header anywhere in stream
         val pngHeader = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte())
         val pngStart = findByteSequence(data, pngHeader)
         if (pngStart != -1) {
@@ -251,11 +259,10 @@ class NetworkPrintServer(
             return
         }
 
-        // 3. Fallback for raw text / ASCII / PostScript label
+        // 5. Fallback for raw text / ASCII / PostScript label
         if (isAsciiText(data)) {
             logger("Extracted Text/PostScript label from $clientIp")
             val textContent = String(data, Charsets.UTF_8)
-            // Filter out HTTP headers if present
             val cleanText = if (textContent.contains("\r\n\r\n")) textContent.substringAfter("\r\n\r\n") else textContent
             processTextJob(cleanText)
             return
