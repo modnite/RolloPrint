@@ -1,11 +1,13 @@
 package com.example.rolloprint;
 
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.hardware.usb.UsbManager;
 import android.net.Uri;
@@ -18,6 +20,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -40,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvServerStatus;
     private PrintServerService printServerService;
     private boolean isServiceBound = false;
+    private boolean isUpdatingSwitchProgrammatically = false;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -124,14 +128,24 @@ public class MainActivity extends AppCompatActivity {
         });
 
         switchServer.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isUpdatingSwitchProgrammatically) return;
+
             if (isChecked) {
+                requestNotificationPermissionIfNeeded();
                 if (isServiceBound && printServerService != null) {
                     startPrintServer();
                 } else {
                     Intent intent = new Intent(this, PrintServerService.class);
                     intent.setAction(PrintServerService.ACTION_START);
-                    ContextCompat.startForegroundService(this, intent);
-                    bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+                    try {
+                        ContextCompat.startForegroundService(this, intent);
+                        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+                    } catch (Exception e) {
+                        log("ERROR starting print server: " + e.getMessage());
+                        isUpdatingSwitchProgrammatically = true;
+                        switchServer.setChecked(false);
+                        isUpdatingSwitchProgrammatically = false;
+                    }
                 }
             } else {
                 if (isServiceBound && printServerService != null) {
@@ -151,6 +165,14 @@ public class MainActivity extends AppCompatActivity {
         handleIncomingIntent(getIntent());
     }
 
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 102);
+            }
+        }
+    }
+
     private void startPrintServer() {
         if (printServerService != null) {
             printServerService.initializeServer(
@@ -161,13 +183,15 @@ public class MainActivity extends AppCompatActivity {
                     },
                     (running, ip) -> {
                         runOnUiThread(() -> {
+                            isUpdatingSwitchProgrammatically = true;
                             if (running && ip != null) {
                                 tvServerStatus.setText("Status: Active on " + ip + ":9100 (mDNS Enabled)");
-                                switchServer.setChecked(true);
+                                if (!switchServer.isChecked()) switchServer.setChecked(true);
                             } else {
                                 tvServerStatus.setText("Status: Disabled (Port 9100)");
-                                switchServer.setChecked(false);
+                                if (switchServer.isChecked()) switchServer.setChecked(false);
                             }
+                            isUpdatingSwitchProgrammatically = false;
                         });
                         return null;
                     }

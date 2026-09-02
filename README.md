@@ -89,18 +89,23 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ## 📜 Version History
 
-### `v1.0.2` — Office Network Print Server (September 2026)
+### `v1.0.3` — September 2, 2026 at 1:00 PM EDT (Consistent Signing & Print Server Stability Fixes)
+- **Consistent Release Key Signing**: Configured permanent release keystore (`rolloprint.jks`) for both debug and release builds with v1, v2, v3, and v4 signature schemes enabled. Fixes APK update/over-install failures and bypasses Google Play Protect warning flags.
+- **Print Server Crash & Infinite Recursion Fix**: Resolved main thread recursive listener crash when toggling the network print server switch. Added socket `reuseAddress` flag and try-catch safety on server restart.
+- **Android 13/14 Runtime Notification Permission**: Added `POST_NOTIFICATIONS` runtime permission handler for foreground service notifications.
+
+### `v1.0.2` — September 2, 2026 at 12:45 PM EDT (Office Network Print Server)
 - **Local Network Print Server (RAW Port 9100)**: Built-in TCP socket server allowing Windows, macOS, and Linux PCs on the local Wi-Fi network to send print jobs directly to the Rollo thermal printer.
 - **mDNS / Zeroconf Discovery**: Advertises `Rollo Thermal Printer` (`_pdl-datastream._tcp.`) so office devices can discover the printer automatically.
 - **Format Filter & Renderer**: Filters incoming network jobs (PDFs, Images, Text) and converts them to 816x1218 @ 203 DPI bitmaps before sending to the TSPL engine. Safely rejects incompatible formats.
 - **Foreground Service**: Uses a background-resilient Android Foreground Service with status notifications to keep the network print server active when the phone is locked.
 
-### `v1.0.1` — Display Cutout & Share Sheet Integration (September 2026)
+### `v1.0.1` — September 2, 2026 at 12:20 PM EDT (Display Cutout & Share Sheet Integration)
 - **Display Cutout / Notch Awareness**: Implemented edge-to-edge system bar and display cutout insets (`SHORT_EDGES` cutout mode) so UI elements avoid camera hole punches and gesture bars.
 - **System Share Integration**: Added `ACTION_SEND` and `ACTION_VIEW` intent filters. Sharing a PDF label from WhatsApp, Email, or File Manager directly opens the print preview dialog in RolloPrint.
 - **Untouched Core Engine**: Preserved all existing USB hardware streaming, autolaunch, and TSPL bit-packing logic without modification.
 
-### `v1.0.0` — Initial Release (September 2026)
+### `v1.0.0` — September 2, 2026 at 11:35 AM EDT (Initial Release)
 - **Core TSPL Engine**: Built expert native TSPL2 USB communication manager.
 - **Rollo X1038 Integration**: Resolved thermal head polarity and bit-packing order for crisp label output.
 - **PDF Label Renderer**: Added native PDF rendering pipeline scaling labels to exact 4x6 dimensions (816x1218 @ 203 DPI).
