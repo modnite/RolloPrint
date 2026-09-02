@@ -1,5 +1,7 @@
 # RolloPrint 🖨️📦
 
+[![Build & Publish APK](https://github.com/modnite/RolloPrint/actions/workflows/release.yml/badge.svg)](https://github.com/modnite/RolloPrint/actions/workflows/release.yml)
+
 **RolloPrint** is a specialized, open-source Android application designed for direct USB thermal printing on the **Rollo X1038** thermal label printer. It provides direct, raw TSPL label streaming over USB Host mode without requiring cloud services, proprietary print servers, or third-party drivers.
 
 ---
@@ -70,6 +72,14 @@
    ```bash
    ./gradlew assembleDebug
    ```
+
+### 📦 Automated Releases via GitHub Actions
+Pre-compiled APKs are automatically generated and attached to GitHub Releases whenever a version tag is pushed:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+You can also manually trigger a build and publish from the **Actions** tab on GitHub (`Build and Publish Release APK` ➔ `Run workflow`).
 
 ---
 
