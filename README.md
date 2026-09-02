@@ -14,6 +14,8 @@
 - **Hardware-Optimized Bit Packing**: Implements custom luminance-based bit-packing with inverted bit polarity tailored specifically for Rollo thermal heads.
 - **Interactive Print Preview**: On-screen dialog previewing rendered labels before sending byte streams to the printer.
 - **Live Activity Console**: In-app real-time log scrollview for hardware diagnostics, transfer status, and error tracing.
+- **Display Cutout & Edge-to-Edge Awareness**: Seamlessly handles display cutouts (camera hole punches/notches) and system bar insets on modern phones, foldables, and Samsung DeX.
+- **Direct PDF Sharing (WhatsApp, Email, Files)**: Supports Android System Share menu (`ACTION_SEND` & `ACTION_VIEW`). Sharing a PDF directly launches RolloPrint and opens the print preview dialog immediately.
 - **Auto Hardware Detection**: Detects USB device attachment events (`USB_DEVICE_ATTACHED`) and prompts for Android USB permissions automatically.
 
 ---
@@ -84,6 +86,11 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 ---
 
 ## 📜 Version History
+
+### `v1.1.0` — Display Cutout & Share Sheet Integration (September 2026)
+- **Display Cutout / Notch Awareness**: Implemented edge-to-edge system bar and display cutout insets (`SHORT_EDGES` cutout mode) so UI elements avoid camera hole punches and gesture bars.
+- **System Share Integration**: Added `ACTION_SEND` and `ACTION_VIEW` intent filters. Sharing a PDF label from WhatsApp, Email, or File Manager directly opens the print preview dialog in RolloPrint.
+- **Untouched Core Engine**: Preserved all existing USB hardware streaming, autolaunch, and TSPL bit-packing logic without modification.
 
 ### `v1.0.0` — Initial Release (September 2026)
 - **Core TSPL Engine**: Built expert native TSPL2 USB communication manager.
