@@ -39,7 +39,8 @@ class NetworkPrintServer(
 
     companion object {
         val PORTS = intArrayOf(9100, 631, 515)
-        const val SERVICE_TYPE = "_pdl-datastream._tcp."
+        const val SERVICE_TYPE_IPP = "_ipp._tcp."
+        const val SERVICE_TYPE_PDL = "_pdl-datastream._tcp."
         const val SERVICE_NAME = "Rollo Thermal Printer"
     }
 
@@ -47,7 +48,7 @@ class NetworkPrintServer(
         if (isRunning) return
         isRunning = true
         val ipAddress = getLocalIpAddress()
-        logger("Print Server active on $ipAddress (Ports: 9100, 631, 515)")
+        logger("Print Server active on $ipAddress (AirPrint / IPP / JetDirect)")
         onStatusChanged(true, ipAddress)
         registerNsdService()
 
@@ -95,24 +96,32 @@ class NetworkPrintServer(
     private fun registerNsdService() {
         try {
             nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
+            
+            // Register Driverless AirPrint / IPP Everywhere Service (causes macOS, Windows & Linux to auto-select AirPrint/IPP driver)
             val serviceInfo = NsdServiceInfo().apply {
                 serviceName = SERVICE_NAME
-                serviceType = SERVICE_TYPE
-                port = 9100
+                serviceType = SERVICE_TYPE_IPP
+                port = 631
                 setAttribute("txtvers", "1")
-                setAttribute("ty", "Rollo X1038")
-                setAttribute("product", "(Rollo X1038)")
-                setAttribute("pdl", "application/pdf,image/png,image/jpeg,application/octet-stream")
-                setAttribute("rp", "raw")
-                setAttribute("note", "RolloPrint Server")
                 setAttribute("qtotal", "1")
-                setAttribute("usb_MFG", "Rollo")
-                setAttribute("usb_MDL", "X1038")
+                setAttribute("pdl", "application/pdf,image/png,image/jpeg,image/urf")
+                setAttribute("rp", "printers/rollo")
+                setAttribute("ty", "Rollo Thermal Printer")
+                setAttribute("product", "(Rollo Thermal Printer)")
+                setAttribute("note", "RolloPrint AirPrint Server")
+                setAttribute("Color", "F")
+                setAttribute("Duplex", "F")
+                setAttribute("URF", "CP1,SM1,W8,SR203,RS203")
+                setAttribute("kind", "label,document")
+                setAttribute("printer-state", "3")
+                setAttribute("printer-type", "0x0001")
+                setAttribute("papercustom", "4x6in,101.6x152.4mm")
+                setAttribute("UUID", "c0a80132-0000-1000-8000-002501001416")
             }
 
             registrationListener = object : NsdManager.RegistrationListener {
                 override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
-                    logger("mDNS Service Discovery Registered: ${serviceInfo.serviceName}")
+                    logger("Driverless AirPrint (mDNS) Registered: ${serviceInfo.serviceName}")
                 }
                 override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
                     logger("mDNS Registration Warning: $errorCode")
@@ -166,13 +175,23 @@ class NetworkPrintServer(
 
                 val jobData = baos.toByteArray()
 
-                // If HTTP request (IPP/CUPS), send HTTP 200 OK back to client to unblock macOS CUPS queue
+                // If HTTP request (IPP/CUPS/AirPrint), respond with HTTP 200 OK + IPP successful-ok header to unblock macOS CUPS queue
                 val isHttp = jobData.size > 4 && String(jobData.take(4).toByteArray(), Charsets.US_ASCII).startsWith("POST")
                 if (isHttp) {
                     try {
                         val output: OutputStream = socket.getOutputStream()
-                        val response = "HTTP/1.1 200 OK\r\nContent-Type: application/ipp\r\nContent-Length: 0\r\n\r\n"
-                        output.write(response.toByteArray())
+                        val responseHeader = "HTTP/1.1 200 OK\r\nContent-Type: application/ipp\r\nConnection: close\r\n\r\n"
+                        val requestId = if (jobData.size >= 8) jobData.copyOfRange(4, 8) else byteArrayOf(0, 0, 0, 1)
+                        val ippResponse = ByteArrayOutputStream().apply {
+                            write(byteArrayOf(0x02, 0x00)) // IPP version 2.0
+                            write(byteArrayOf(0x00, 0x00)) // successful-ok
+                            write(requestId)               // request-id matching client
+                            write(0x01)                    // operation-attributes-tag
+                            write(0x03)                    // end-of-attributes-tag
+                        }.toByteArray()
+
+                        output.write(responseHeader.toByteArray())
+                        output.write(ippResponse)
                         output.flush()
                     } catch (_: Exception) {}
                 }
@@ -185,7 +204,7 @@ class NetworkPrintServer(
                     return@execute
                 }
 
-                logger("Processing network print job (${jobData.size} bytes) from $clientIp...")
+                logger("Ingesting network print job (${jobData.size} bytes) from $clientIp...")
                 processIncomingJobData(jobData, clientIp, socket)
 
                 try {
@@ -216,7 +235,7 @@ class NetworkPrintServer(
         val pdfStart = findByteSequence(data, pdfHeader)
         if (pdfStart != -1) {
             val pdfData = data.copyOfRange(pdfStart, data.size)
-            logger("Extracted PDF label (${pdfData.size} bytes) from $clientIp")
+            logger("Extracted 4x6 PDF label (${pdfData.size} bytes) from $clientIp")
             processPdfJob(pdfData)
             return
         }
@@ -252,7 +271,7 @@ class NetworkPrintServer(
 
         // 4. Filter & Acknowledge CUPS / PostScript Feature Query Probes ONLY if NO PDF/Image document was attached
         if (asciiHeader.contains("%!PS-Adobe") && (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery") || asciiHeader.contains("userdict"))) {
-            logger("Acknowledged CUPS PostScript status probe from $clientIp.")
+            logger("Acknowledged CUPS status probe from $clientIp.")
             try {
                 val output = socket.getOutputStream()
                 output.write("False\r\nUnknown\r\n".toByteArray())
@@ -261,13 +280,13 @@ class NetworkPrintServer(
             return
         }
 
-        // 4. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
+        // 5. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
         if (asciiHeader.contains("^XA") || asciiHeader.contains("~DGR") || asciiHeader.contains("^XZ")) {
-            logger("REJECTED: Zebra ZPL payload received. On macOS, please set Printer Driver to 'Generic PCL Printer'.")
+            logger("REJECTED: Zebra ZPL payload received. On macOS, please select AirPrint / Driverless printer.")
             return
         }
 
-        // 5. Fallback for raw text / PostScript document
+        // 6. Fallback for raw text / PostScript document
         if (asciiHeader.contains("%!PS-Adobe") || isAsciiText(data)) {
             logger("Extracted PostScript/Text document (${data.size} bytes) from $clientIp")
             val textContent = String(data, Charsets.UTF_8)
@@ -303,7 +322,7 @@ class NetworkPrintServer(
         tempFile.delete()
 
         if (bitmap != null) {
-            logger("Network PDF converted to 4x6 label. Streaming to Rollo...")
+            logger("Network PDF converted to 4x6 label. Streaming directly to Rollo...")
             printManager.printBitmapAsync(bitmap)
         } else {
             logger("ERROR: Failed to render network PDF.")
@@ -334,7 +353,7 @@ class NetworkPrintServer(
 
         canvas.drawBitmap(rawBitmap, null, RectF(left, top, left + renderW, top + renderH), null)
 
-        logger("Network Image fitted to 4x6 203DPI canvas. Streaming to Rollo...")
+        logger("Network Image fitted to 4x6 203DPI canvas. Streaming directly to Rollo...")
         printManager.printBitmapAsync(canvasBitmap)
     }
 
@@ -376,7 +395,7 @@ class NetworkPrintServer(
             if (y > targetHeight - 40) break
         }
 
-        logger("PostScript/Text rendered to 4x6 label. Streaming to Rollo...")
+        logger("PostScript/Text rendered to 4x6 label. Streaming directly to Rollo...")
         printManager.printBitmapAsync(canvasBitmap)
     }
 
