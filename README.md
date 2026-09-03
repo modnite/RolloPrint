@@ -12,7 +12,7 @@ This project was born out of a real-world office need.
 
 In our office, the Rollo thermal printer was plugged into our boss's Windows computer. When that computer went down, printing shipping labels became a constant headache: whenever a label arrived via WhatsApp from our boss, someone had to physically plug the printer into a MacBook, open WhatsApp Web, download the PDF, and print it.
 
-I rely heavily on my **Samsung Galaxy S23 docked at my desk using Samsung DeX**. I wanted a solution where my phone—permanently docked at my desk—could connect directly to the printer via USB and host a wireless print server for the entire office.
+I rely heavily on my **Samsung Galaxy S23 docked at my desk using Samsung DeX**. I wanted a solution where my phone (permanently docked at my desk) could connect directly to the printer via USB and host a wireless print server for the entire office.
 
 Now with **RolloPrint**:
 - My Galaxy S23 stays connected to the Rollo printer via USB.
