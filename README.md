@@ -1,4 +1,4 @@
-# RolloPrint 🖨️📦
+# RolloPrint
 
 [![Build & Publish APK](https://github.com/modnite/RolloPrint/actions/workflows/release.yml/badge.svg)](https://github.com/modnite/RolloPrint/actions/workflows/release.yml)
 
@@ -6,7 +6,7 @@
 
 ---
 
-## ✨ Features
+## Features
 
 - **Direct USB Host Control**: Communicates directly with Rollo hardware (`VID: 0x09C5`, `PID: 0x0588` / `2501:1416`) via Android USB Host API.
 - **On-Device PDF Label Rendering**: Built-in PDF renderer converts standard 4x6 shipping labels (FedEx, UPS, USPS, DHL, Amazon) into crisp monochrome 203 DPI bitmaps (816 × 1218 px).
@@ -14,7 +14,7 @@
 - **Hardware-Optimized Bit Packing**: Implements custom luminance-based bit-packing with inverted bit polarity tailored specifically for Rollo thermal heads.
 - **Interactive Print Preview**: On-screen dialog previewing rendered labels before sending byte streams to the printer.
 - **Live Activity Console**: In-app real-time log scrollview for hardware diagnostics, transfer status, and error tracing.
-- **Office Network Print Server (Port 9100 + mDNS)**: Features a built-in TCP JetDirect/AppSocket print server and mDNS Zeroconf discovery (`_pdl-datastream._tcp.`). When toggled on, any Windows, Mac, or Linux PC on the local Wi-Fi network can discover and print directly to the Rollo thermal printer.
+- **Print Server (Port 9100 + mDNS)**: Features a built-in TCP JetDirect/AppSocket print server and mDNS Zeroconf discovery (`_pdl-datastream._tcp.`, `_ipp._tcp.`). When toggled on, any Windows, Mac, or Linux PC on the local Wi-Fi network can discover and print directly to the Rollo thermal printer.
 - **Strict Format Guard & Auto-Scaling**: Incoming network print jobs (PDF, PNG, JPG, or Text) are automatically validated, filtered, and rendered onto 4x6 203 DPI canvases. Invalid or garbage print jobs are safely rejected.
 - **Display Cutout & Edge-to-Edge Awareness**: Seamlessly handles display cutouts (camera hole punches/notches) and system bar insets on modern phones, foldables, and Samsung DeX.
 - **Direct PDF Sharing (WhatsApp, Email, Files)**: Supports Android System Share menu (`ACTION_SEND` & `ACTION_VIEW`). Sharing a PDF directly launches RolloPrint and opens the print preview dialog immediately.
@@ -22,17 +22,17 @@
 
 ---
 
-## 🖨️ Hardware Compatibility
+## Hardware Compatibility
 
 | Device | Vendor ID (VID) | Product ID (PID) | Status |
 | :--- | :--- | :--- | :--- |
-| **Rollo X1038 USB Thermal Printer** | `2501` (`0x09C5`) | `1416` (`0x0588`) | ✅ Fully Supported |
+| **Rollo X1038 USB Thermal Printer** | `2501` (`0x09C5`) | `1416` (`0x0588`) | Fully Supported |
 
 > *Note: Also compatible with standard TSPL-2 thermal label printers supporting USB Bulk endpoints.*
 
 ---
 
-## 📐 Architecture & Workflow
+## Architecture & Workflow
 
 ```
 [ PDF Document ] ➔ [ Android PdfRenderer ] ➔ [ 816x1218 ARGB Bitmap ]
@@ -59,7 +59,7 @@
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - **Android Device**: Android 7.0 (API 24) or higher with USB OTG / USB Host support.
@@ -77,7 +77,7 @@
    ./gradlew assembleDebug
    ```
 
-### 📦 Automated Releases via GitHub Actions
+### Automated Releases via GitHub Actions
 Pre-compiled APKs are automatically generated and attached to GitHub Releases whenever a version tag is pushed:
 ```bash
 git tag v1.0.0
@@ -87,14 +87,12 @@ You can also manually trigger a build and publish from the **Actions** tab on Gi
 
 ---
 
-## 📜 Version History & Changelog
+## Changelog
 
-For the complete release history, detailed feature updates, and timestamps, see the [CHANGELOG.md](CHANGELOG.md).
-
----
+For the complete release history, detailed feature updates, and exact timestamps, see the [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-## 📄 License
+## License
 
 This project is open-source and available under the [MIT License](LICENSE).
