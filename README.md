@@ -2,23 +2,33 @@
 
 [![Build & Publish APK](https://github.com/modnite/RolloPrint/actions/workflows/release.yml/badge.svg)](https://github.com/modnite/RolloPrint/actions/workflows/release.yml)
 
-**RolloPrint** is a specialized, open-source Android application designed for direct USB thermal printing on the **Rollo X1038** thermal label printer. It provides direct, raw TSPL label streaming over USB Host mode without requiring cloud services, proprietary print servers, or third-party drivers.
+**RolloPrint** is a specialized, open-source Android app that turns your Android device into a direct driver for the **Rollo X1038** thermal label printer and an office-wide wireless print server.
 
 ---
 
-## Features
+## Why RolloPrint Was Created
 
-- **Direct USB Host Control**: Communicates directly with Rollo hardware (`VID: 0x09C5`, `PID: 0x0588` / `2501:1416`) via Android USB Host API.
-- **On-Device PDF Label Rendering**: Built-in PDF renderer converts standard 4x6 shipping labels (FedEx, UPS, USPS, DHL, Amazon) into crisp monochrome 203 DPI bitmaps (816 × 1218 px).
-- **Custom TSPL Command Pipeline**: Generates raw TSPL (Taiwan Semiconductor Printer Language) bitmap streams (`SIZE 4.0,6.0`, `GAP 0,0`, `BITMAP`).
-- **Hardware-Optimized Bit Packing**: Implements custom luminance-based bit-packing with inverted bit polarity tailored specifically for Rollo thermal heads.
-- **Interactive Print Preview**: On-screen dialog previewing rendered labels before sending byte streams to the printer.
-- **Live Activity Console**: In-app real-time log scrollview for hardware diagnostics, transfer status, and error tracing.
-- **Print Server (Port 9100 + mDNS)**: Features a built-in TCP JetDirect/AppSocket print server and mDNS Zeroconf discovery (`_pdl-datastream._tcp.`, `_ipp._tcp.`). When toggled on, any Windows, Mac, or Linux PC on the local Wi-Fi network can discover and print directly to the Rollo thermal printer.
-- **Strict Format Guard & Auto-Scaling**: Incoming network print jobs (PDF, PNG, JPG, or Text) are automatically validated, filtered, and rendered onto 4x6 203 DPI canvases. Invalid or garbage print jobs are safely rejected.
-- **Display Cutout & Edge-to-Edge Awareness**: Seamlessly handles display cutouts (camera hole punches/notches) and system bar insets on modern phones, foldables, and Samsung DeX.
-- **Direct PDF Sharing (WhatsApp, Email, Files)**: Supports Android System Share menu (`ACTION_SEND` & `ACTION_VIEW`). Sharing a PDF directly launches RolloPrint and opens the print preview dialog immediately.
-- **Auto Hardware Detection**: Detects USB device attachment events (`USB_DEVICE_ATTACHED`) and prompts for Android USB permissions automatically.
+This project was born out of a real-world office need. 
+
+In our office, the Rollo thermal printer was plugged into our boss's Windows computer. When that computer went down, printing shipping labels became a constant headache: whenever a label arrived via WhatsApp from our boss, someone had to physically plug the printer into a MacBook, open WhatsApp Web, download the PDF, and print it.
+
+I rely heavily on my **Samsung Galaxy S23 docked at my desk using Samsung DeX**. I wanted a solution where my phone—permanently docked at my desk—could connect directly to the printer via USB and host a wireless print server for the entire office.
+
+Now with **RolloPrint**:
+- My Galaxy S23 stays connected to the Rollo printer via USB.
+- Anyone in the office can share a PDF shipping label directly from **WhatsApp** on their phone or print wirelessly over Wi-Fi from their **MacBook, Windows PC, or Linux machine**.
+- No swapping cables, no downloading files on WhatsApp Web, and no driver installations required!
+
+---
+
+## What RolloPrint Does
+
+- **Direct USB Printing**: Plug your Android device into the Rollo printer via USB OTG or a USB-C dock to print 4x6 labels instantly.
+- **Built-in Network Print Server**: Toggle on the Print Server, and any Mac, Windows, Linux PC, or mobile device on the local Wi-Fi network can discover the printer automatically via AirPrint / IPP.
+- **WhatsApp & File Share Support**: Tap "Share" on any PDF label in WhatsApp or your file manager, select RolloPrint, preview it, and print.
+- **Auto-Formatting for 4x6 Thermal Labels**: Automatically converts PDFs, images, or text into crisp 4" x 6" 203 DPI monochrome shipping labels.
+- **Samsung DeX & Phone Friendly**: Fully aware of display cutouts (camera notches) on phones and scales naturally in Samsung DeX desktop mode.
+- **Auto Hardware Detection**: Detects when the Rollo printer is plugged in and prompts for connection permissions automatically.
 
 ---
 
@@ -28,68 +38,41 @@
 | :--- | :--- | :--- | :--- |
 | **Rollo X1038 USB Thermal Printer** | `2501` (`0x09C5`) | `1416` (`0x0588`) | Fully Supported |
 
-> *Note: Also compatible with standard TSPL-2 thermal label printers supporting USB Bulk endpoints.*
+> *Note: Compatible with standard TSPL-2 direct thermal label printers over USB.*
 
 ---
 
-## Architecture & Workflow
+## How It Works
 
 ```
-[ PDF Document ] ➔ [ Android PdfRenderer ] ➔ [ 816x1218 ARGB Bitmap ]
-                                                         │
-                                                         ▼
-[ Rollo X1038 USB ] ◄── [ USB Bulk Stream ] ◄── [ TSPL Bit-Packed Payload ]
+[ PDF Label / Network Job ] ➔ [ 816x1218 Canvas (4x6 @ 203 DPI) ]
+                                             │
+                                             ▼
+[ Rollo USB Hardware ] ◄── [ USB Bulk Stream ] ◄── [ TSPL Command Stream ]
 ```
 
-1. **PDF Import**: Select any PDF shipping label using Android's system file picker (`Storage Access Framework`).
-2. **Page Rendering**: Render page 0 into a centered 816 × 1218 bitmap matching 4" × 6" thermal dimensions at 203 DPI.
-3. **Monochrome Conversion**: Calculate pixel luminance ($0.299R + 0.587G + 0.114B$) and pack into 1-bit bytes with inverted polarity (`1 = Paper/White`, `0 = Ink/Black`).
-4. **TSPL Packaging**: Wrap binary bitmap array inside TSPL control headers:
-   ```tspl
-   SIZE 4.0,6.0
-   GAP 0,0
-   DIRECTION 1
-   REFERENCE 0,0
-   SET TEAR ON
-   CLS
-   BITMAP 0,0,102,1218,0,[BINARY_DATA]
-   PRINT 1,1
-   ```
-5. **USB Bulk Transfer**: Chunk binary payload into 1024-byte packets over the USB OUT Bulk Endpoint.
+1. **Input**: A PDF label is selected manually, shared from WhatsApp, or sent over the local Wi-Fi network.
+2. **Render**: The document is formatted and scaled onto an 816 × 1218 pixel canvas matching 4x6 inches at 203 DPI.
+3. **Convert**: Pixel luminance is packed into 1-bit monochrome bytes with polarity calibrated specifically for Rollo thermal heads.
+4. **Stream**: The TSPL command stream is sent directly to the printer over the USB OTG connection.
 
 ---
 
 ## Getting Started
 
-### Prerequisites
-- **Android Device**: Android 7.0 (API 24) or higher with USB OTG / USB Host support.
-- **Cable**: USB OTG Adapter or USB-C to USB-B cable to connect Android device directly to the Rollo Printer.
-- **Printer**: Rollo X1038 Direct Thermal Printer with 4x6 shipping labels loaded.
+### Requirements
+- **Android Device**: Android 7.0 or newer with USB OTG support (works great on Samsung DeX, phones, and tablets).
+- **USB Cable / Hub**: USB OTG adapter or USB-C docking station connecting the phone to the printer.
+- **Printer**: Rollo X1038 thermal label printer with 4x6 labels loaded.
 
-### Building & Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/modnite/RolloPrint.git
-   ```
-2. Open the project in **Android Studio**.
-3. Build and install the APK onto your Android device:
-   ```bash
-   ./gradlew assembleDebug
-   ```
-
-### Automated Releases via GitHub Actions
-Pre-compiled APKs are automatically generated and attached to GitHub Releases whenever a version tag is pushed:
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-You can also manually trigger a build and publish from the **Actions** tab on GitHub (`Build and Publish Release APK` ➔ `Run workflow`).
+### Installation & Download
+Download the latest pre-compiled APK from the [Releases](https://github.com/modnite/RolloPrint/releases) page and install it on your device.
 
 ---
 
 ## Changelog
 
-For the complete release history, detailed feature updates, and exact timestamps, see the [CHANGELOG.md](CHANGELOG.md).
+For the complete release history, detailed feature updates, and exact timestamps, see [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
