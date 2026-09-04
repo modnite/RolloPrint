@@ -40,14 +40,38 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             val canvas = Canvas(bitmap)
             canvas.drawColor(Color.WHITE)
 
-            val scale = Math.min(TARGET_WIDTH.toFloat() / page.width, TARGET_HEIGHT.toFloat() / page.height)
-            val renderWidth = (page.width * scale).toInt()
-            val renderHeight = (page.height * scale).toInt()
-            val left = (TARGET_WIDTH - renderWidth) / 2
-            val top = (TARGET_HEIGHT - renderHeight) / 2
+            val isLandscape = page.width > page.height
+            if (isLandscape) {
+                val tempW = page.height
+                val tempH = page.width
+                val scale = Math.min(TARGET_WIDTH.toFloat() / tempW, TARGET_HEIGHT.toFloat() / tempH)
+                val renderW = (page.width * scale).toInt()
+                val renderH = (page.height * scale).toInt()
 
-            val destRect = Rect(left, top, left + renderWidth, top + renderHeight)
-            page.render(bitmap, destRect, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                val pageBitmap = Bitmap.createBitmap(renderW, renderH, Bitmap.Config.ARGB_8888)
+                val pageCanvas = Canvas(pageBitmap)
+                pageCanvas.drawColor(Color.WHITE)
+                page.render(pageBitmap, Rect(0, 0, renderW, renderH), null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+
+                val matrix = Matrix().apply {
+                    postRotate(90f)
+                    postTranslate(
+                        (TARGET_WIDTH + renderH) / 2f,
+                        (TARGET_HEIGHT - renderW) / 2f
+                    )
+                }
+                canvas.drawBitmap(pageBitmap, matrix, null)
+                pageBitmap.recycle()
+            } else {
+                val scale = Math.min(TARGET_WIDTH.toFloat() / page.width, TARGET_HEIGHT.toFloat() / page.height)
+                val renderWidth = (page.width * scale).toInt()
+                val renderHeight = (page.height * scale).toInt()
+                val left = (TARGET_WIDTH - renderWidth) / 2
+                val top = (TARGET_HEIGHT - renderHeight) / 2
+
+                val destRect = Rect(left, top, left + renderWidth, top + renderHeight)
+                page.render(bitmap, destRect, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+            }
 
             page.close()
             renderer.close()

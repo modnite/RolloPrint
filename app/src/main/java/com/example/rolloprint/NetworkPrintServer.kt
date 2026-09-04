@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
 import android.net.Uri
@@ -40,7 +41,6 @@ class NetworkPrintServer(
     companion object {
         val PORTS = intArrayOf(9100, 631, 515)
         const val SERVICE_TYPE_IPP = "_ipp._tcp."
-        const val SERVICE_TYPE_PDL = "_pdl-datastream._tcp."
         const val SERVICE_NAME = "Rollo Thermal Printer"
     }
 
@@ -48,7 +48,7 @@ class NetworkPrintServer(
         if (isRunning) return
         isRunning = true
         val ipAddress = getLocalIpAddress()
-        logger("Print Server active on $ipAddress (AirPrint / IPP / JetDirect)")
+        logger("[NETWORK] Print Server active on $ipAddress (AirPrint / IPP / JetDirect)")
         onStatusChanged(true, ipAddress)
         registerNsdService()
 
@@ -67,13 +67,13 @@ class NetworkPrintServer(
                             handleClientSocket(clientSocket, port)
                         } catch (e: Exception) {
                             if (isRunning && !socket.isClosed) {
-                                logger("Server Port $port Error: ${e.message}")
+                                logger("[NETWORK] Server Port $port Error: ${e.message}")
                             }
                         }
                     }
                 } catch (e: Exception) {
                     if (isRunning) {
-                        logger("Failed to bind Port $port: ${e.message}")
+                        logger("[NETWORK] Failed to bind Port $port: ${e.message}")
                     }
                 }
             }
@@ -89,7 +89,7 @@ class NetworkPrintServer(
             } catch (_: Exception) {}
         }
         serverSockets.clear()
-        logger("Print Server Stopped.")
+        logger("[NETWORK] Print Server Stopped.")
         onStatusChanged(false, null)
     }
 
@@ -121,10 +121,10 @@ class NetworkPrintServer(
 
             registrationListener = object : NsdManager.RegistrationListener {
                 override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
-                    logger("Driverless AirPrint (mDNS) Registered: ${serviceInfo.serviceName}")
+                    logger("[NETWORK] Driverless AirPrint (mDNS) Registered: ${serviceInfo.serviceName}")
                 }
                 override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-                    logger("mDNS Registration Warning: $errorCode")
+                    logger("[NETWORK] mDNS Registration Warning: $errorCode")
                 }
                 override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {}
                 override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {}
@@ -132,7 +132,7 @@ class NetworkPrintServer(
 
             nsdManager?.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener)
         } catch (e: Exception) {
-            logger("mDNS Setup Notice: ${e.message}")
+            logger("[NETWORK] mDNS Setup Notice: ${e.message}")
         }
     }
 
@@ -147,7 +147,7 @@ class NetworkPrintServer(
 
     private fun handleClientSocket(socket: Socket, port: Int) {
         val clientIp = socket.inetAddress?.hostAddress ?: "Unknown"
-        logger("Incoming job connection from $clientIp on port $port")
+        logger("[NETWORK] Incoming job connection from $clientIp on port $port")
         Executors.newSingleThreadExecutor().execute {
             try {
                 socket.soTimeout = 1500
@@ -165,7 +165,7 @@ class NetworkPrintServer(
 
                         val currentData = baos.toByteArray()
                         if (isCompleteDocument(currentData)) {
-                            logger("Complete label document signature detected (${currentData.size} bytes)")
+                            logger("[NETWORK] Complete label document signature detected (${currentData.size} bytes)")
                             break
                         }
                     }
@@ -197,21 +197,21 @@ class NetworkPrintServer(
                 }
 
                 if (jobData.isEmpty()) {
-                    logger("Received empty job payload from $clientIp")
+                    logger("[NETWORK] Received empty job payload from $clientIp")
                     try {
                         socket.close()
                     } catch (_: Exception) {}
                     return@execute
                 }
 
-                logger("Ingesting network print job (${jobData.size} bytes) from $clientIp...")
+                logger("[NETWORK] Ingesting network print job (${jobData.size} bytes) from $clientIp...")
                 processIncomingJobData(jobData, clientIp, socket)
 
                 try {
                     socket.close()
                 } catch (_: Exception) {}
             } catch (e: Exception) {
-                logger("Error processing network job from $clientIp: ${e.message}")
+                logger("[NETWORK] Error processing network job from $clientIp: ${e.message}")
             }
         }
     }
@@ -235,7 +235,7 @@ class NetworkPrintServer(
         val pdfStart = findByteSequence(data, pdfHeader)
         if (pdfStart != -1) {
             val pdfData = data.copyOfRange(pdfStart, data.size)
-            logger("Extracted 4x6 PDF label (${pdfData.size} bytes) from $clientIp")
+            logger("[NETWORK] Extracted 4x6 PDF label (${pdfData.size} bytes) from $clientIp")
             processPdfJob(pdfData)
             return
         }
@@ -245,7 +245,7 @@ class NetworkPrintServer(
         val pngStart = findByteSequence(data, pngHeader)
         if (pngStart != -1) {
             val pngData = data.copyOfRange(pngStart, data.size)
-            logger("Extracted PNG image (${pngData.size} bytes) from $clientIp")
+            logger("[NETWORK] Extracted PNG image (${pngData.size} bytes) from $clientIp")
             processImageJob(pngData)
             return
         }
@@ -254,7 +254,7 @@ class NetworkPrintServer(
         val jpgStart = findByteSequence(data, jpgHeader)
         if (jpgStart != -1) {
             val jpgData = data.copyOfRange(jpgStart, data.size)
-            logger("Extracted JPEG image (${jpgData.size} bytes) from $clientIp")
+            logger("[NETWORK] Extracted JPEG image (${jpgData.size} bytes) from $clientIp")
             processImageJob(jpgData)
             return
         }
@@ -264,17 +264,23 @@ class NetworkPrintServer(
         // 3. Check for Native TSPL Commands / Official Rollo Desktop Driver Stream
         val upperHeader = asciiHeader.uppercase()
         if (upperHeader.contains("SIZE ") || upperHeader.contains("BITMAP ") || upperHeader.contains("CLS") || upperHeader.contains("PRINT ")) {
-            logger("Detected native Rollo TSPL driver stream (${data.size} bytes) from $clientIp. Streaming to Rollo...")
+            logger("[NETWORK] Detected native Rollo TSPL driver stream (${data.size} bytes) from $clientIp. Streaming to Rollo...")
             printManager.printRawBytesAsync(data)
             return
         }
 
-        // 4. Filter & Acknowledge CUPS / PostScript Feature Query Probes ONLY if size < 5000 AND explicitly a status probe
+        // 4. Filter out IPP Printer Capability Queries (e.g. attributes-charset, requested-attributes) without documents
+        if (asciiHeader.contains("attributes-charset") || asciiHeader.contains("requested-attributes")) {
+            logger("[NETWORK] Handled IPP printer capability query from $clientIp.")
+            return
+        }
+
+        // 5. Filter & Acknowledge CUPS / PostScript Feature Query Probes ONLY if size < 5000 AND explicitly a status probe
         val isProbe = data.size < 5000 && asciiHeader.contains("%!PS-Adobe") &&
             (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery"))
 
         if (isProbe) {
-            logger("Acknowledged CUPS status probe from $clientIp.")
+            logger("[NETWORK] Acknowledged CUPS PostScript status probe from $clientIp.")
             try {
                 val output = socket.getOutputStream()
                 output.write("False\r\nUnknown\r\n".toByteArray())
@@ -283,22 +289,22 @@ class NetworkPrintServer(
             return
         }
 
-        // 5. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
+        // 6. Check for Zebra ZPL Driver Payload (^XA, ^XZ, ~DGR)
         if (asciiHeader.contains("^XA") || asciiHeader.contains("~DGR") || asciiHeader.contains("^XZ")) {
-            logger("REJECTED: Zebra ZPL payload received. On macOS, please select AirPrint / Driverless printer.")
+            logger("[NETWORK] REJECTED: Zebra ZPL payload received. On macOS, please select AirPrint / Driverless printer.")
             return
         }
 
-        // 6. Fallback for raw text / PostScript document
+        // 7. Fallback for raw text / PostScript document
         if (asciiHeader.contains("%!PS-Adobe") || isAsciiText(data)) {
-            logger("Extracted PostScript/Text document (${data.size} bytes) from $clientIp")
+            logger("[NETWORK] Extracted PostScript/Text document (${data.size} bytes) from $clientIp")
             val textContent = String(data, Charsets.UTF_8)
             val cleanText = if (textContent.contains("\r\n\r\n")) textContent.substringAfter("\r\n\r\n") else textContent
             processTextJob(cleanText)
             return
         }
 
-        logger("REJECTED: Job (${data.size} bytes) from $clientIp is incompatible with Rollo 4x6 thermal printer.")
+        logger("[NETWORK] REJECTED: Job (${data.size} bytes) from $clientIp is incompatible with Rollo 4x6 thermal printer.")
     }
 
     private fun findByteSequence(data: ByteArray, pattern: ByteArray): Int {
@@ -325,18 +331,24 @@ class NetworkPrintServer(
         tempFile.delete()
 
         if (bitmap != null) {
-            logger("Network PDF converted to 4x6 label. Streaming directly to Rollo...")
+            logger("[NETWORK] Network PDF converted to 4x6 label. Streaming directly to Rollo...")
             printManager.printBitmapAsync(bitmap)
         } else {
-            logger("ERROR: Failed to render network PDF.")
+            logger("[NETWORK] ERROR: Failed to render network PDF.")
         }
     }
 
     private fun processImageJob(imageBytes: ByteArray) {
-        val rawBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        var rawBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
         if (rawBitmap == null) {
-            logger("ERROR: Failed to decode incoming image.")
+            logger("[NETWORK] ERROR: Failed to decode incoming image.")
             return
+        }
+
+        // Auto-rotate landscape images 90 degrees to fit vertical 4x6 thermal paper
+        if (rawBitmap.width > rawBitmap.height) {
+            val matrix = Matrix().apply { postRotate(90f) }
+            rawBitmap = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
         }
 
         val targetWidth = UsbPrintManager.TARGET_WIDTH
@@ -356,7 +368,7 @@ class NetworkPrintServer(
 
         canvas.drawBitmap(rawBitmap, null, RectF(left, top, left + renderW, top + renderH), null)
 
-        logger("Network Image fitted to 4x6 203DPI canvas. Streaming directly to Rollo...")
+        logger("[NETWORK] Network Image fitted to 4x6 203DPI canvas. Streaming directly to Rollo...")
         printManager.printBitmapAsync(canvasBitmap)
     }
 
@@ -398,7 +410,7 @@ class NetworkPrintServer(
             if (y > targetHeight - 40) break
         }
 
-        logger("PostScript/Text rendered to 4x6 label. Streaming directly to Rollo...")
+        logger("[NETWORK] PostScript/Text rendered to 4x6 label. Streaming directly to Rollo...")
         printManager.printBitmapAsync(canvasBitmap)
     }
 

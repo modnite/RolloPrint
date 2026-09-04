@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         );
 
         btnSelect.setOnClickListener(v -> {
-            log("--- Direct TSPL Label Print ---");
+            log("[LOCAL] --- Direct TSPL Label Print ---");
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/pdf");
             startActivityForResult(intent, 101);
@@ -133,10 +133,10 @@ public class MainActivity extends AppCompatActivity {
             if (isUpdatingSwitchProgrammatically) return;
 
             if (isChecked) {
-                log("Starting Office Network Print Server on port 9100...");
+                log("[SERVER] Starting Print Server on port 9100...");
                 networkPrintServer.start();
             } else {
-                log("Stopping Office Network Print Server...");
+                log("[SERVER] Stopping Print Server...");
                 networkPrintServer.stop();
                 tvServerStatus.setText("Status: Disabled (Port 9100)");
             }
@@ -145,8 +145,13 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        log("Rollo X1038 Utility Loaded.");
-        log("Ready to print PDF labels.");
+        String appVersion = "1.0.15";
+        try {
+            appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {}
+
+        log("Rollo X1038 Utility v" + appVersion + " Loaded.");
+        log("Ready to print 4x6 PDF labels.");
 
         // Proactively request all runtime permissions on first open
         checkAndRequestAllPermissions();
@@ -200,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (pdfUri != null) {
-            log("Received shared label: " + pdfUri);
+            log("[LOCAL] Received shared label via Share Sheet: " + pdfUri);
             renderAndPreview(pdfUri);
         }
     }
@@ -236,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
         PrintPreviewDialogFragment previewDialog = PrintPreviewDialogFragment.Companion.newInstance(
                 bitmap,
                 () -> {
-                    log("User confirmed print. Starting hardware stream...");
+                    log("[LOCAL] User confirmed print. Streaming to Rollo...");
                     printManager.printBitmapAsync(bitmap);
                 }
         );

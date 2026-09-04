@@ -4,6 +4,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.0.15` — September 2, 2026 at 10:45 PM
+- **Startup App Version Log**: Activity log console now displays the exact build version on app launch (`Rollo X1038 Utility v1.0.15 Loaded`).
+- **Explicit Log Prefixes (`[LOCAL]` vs `[NETWORK]`)**: Activity log console messages now clearly distinguish between local print actions (`[LOCAL]`) and network print server events (`[NETWORK]`).
+- **IPP Attribute Query Filter**: Added explicit filter for IPP attribute/capability queries without embedded document data, preventing IPP attribute strings from being printed onto labels.
+- **Landscape Auto-Rotation & Proportional 4x6 Canvas Scaling**: Added 90-degree auto-rotation and proportional scaling for landscape images and PDF pages, ensuring full-page printing without margin cutoffs.
+
 ### `v1.0.14` — September 2, 2026 at 9:45 PM
 - **PostScript Probe Filter Isolation**: Added strict payload size check (`data.size < 5000`) on probe filtering. Prevents 200KB+ PostScript print documents (such as your 261,942 byte print job) from being misidentified as status probes, allowing the server to process and print full CUPS PostScript documents immediately.
 
