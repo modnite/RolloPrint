@@ -269,8 +269,11 @@ class NetworkPrintServer(
             return
         }
 
-        // 4. Filter & Acknowledge CUPS / PostScript Feature Query Probes ONLY if NO PDF/Image document was attached
-        if (asciiHeader.contains("%!PS-Adobe") && (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery") || asciiHeader.contains("userdict"))) {
+        // 4. Filter & Acknowledge CUPS / PostScript Feature Query Probes ONLY if size < 5000 AND explicitly a status probe
+        val isProbe = data.size < 5000 && asciiHeader.contains("%!PS-Adobe") &&
+            (asciiHeader.contains("Query") || asciiHeader.contains("BeginFeatureQuery"))
+
+        if (isProbe) {
             logger("Acknowledged CUPS status probe from $clientIp.")
             try {
                 val output = socket.getOutputStream()

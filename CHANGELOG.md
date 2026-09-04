@@ -4,6 +4,9 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.0.14` — September 2, 2026 at 9:45 PM
+- **PostScript Probe Filter Isolation**: Added strict payload size check (`data.size < 5000`) on probe filtering. Prevents 200KB+ PostScript print documents (such as your 261,942 byte print job) from being misidentified as status probes, allowing the server to process and print full CUPS PostScript documents immediately.
+
 ### `v1.0.13` — September 2, 2026 at 9:20 PM
 - **Driverless AirPrint / IPP Everywhere Advertisement**: Configured mDNS TXT attributes (`pdl=application/pdf`, `kind=label,document`, `URF=CP1,SM1...`, `papercustom=4x6in`) on Port 631 and 9100. macOS, Windows, and Linux auto-detect `Rollo Thermal Printer` as a driverless AirPrint printer without prompting for vendor drivers.
 - **Zero-Dialog Auto-Print Pipeline**: Network print jobs automatically bypass the UI print preview modal, ingesting PDFs/images, converting them to 816x1218 @ 203 DPI bitmaps, and streaming bit-packed TSPL directly to the Rollo USB hardware.
