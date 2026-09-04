@@ -4,6 +4,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.0.16` — September 2, 2026 at 11:20 PM
+- **CUPS Probe Reply Formatting Fix**: Fixed carriage return line endings in CUPS PostScript probe replies (`False\nUnknown\n`) preventing macOS from finalizing print handshakes.
+- **Strict TSPL Stream Detection**: Tightened native TSPL command string detection (`CLS `) to prevent false-positive matches on CUPS PostScript variable names (e.g. `Classes`).
+
 ### `v1.0.15` — September 2, 2026 at 10:45 PM
 - **Startup App Version Log**: Activity log console now displays the exact build version on app launch (`Rollo X1038 Utility v1.0.15 Loaded`).
 - **Explicit Log Prefixes (`[LOCAL]` vs `[NETWORK]`)**: Activity log console messages now clearly distinguish between local print actions (`[LOCAL]`) and network print server events (`[NETWORK]`).

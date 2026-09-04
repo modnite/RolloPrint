@@ -263,7 +263,7 @@ class NetworkPrintServer(
 
         // 3. Check for Native TSPL Commands / Official Rollo Desktop Driver Stream
         val upperHeader = asciiHeader.uppercase()
-        if (upperHeader.contains("SIZE ") || upperHeader.contains("BITMAP ") || upperHeader.contains("CLS") || upperHeader.contains("PRINT ")) {
+        if (upperHeader.contains("SIZE ") || upperHeader.contains("BITMAP ") || upperHeader.contains("CLS ") || upperHeader.contains("PRINT ")) {
             logger("[NETWORK] Detected native Rollo TSPL driver stream (${data.size} bytes) from $clientIp. Streaming to Rollo...")
             printManager.printRawBytesAsync(data)
             return
@@ -283,7 +283,7 @@ class NetworkPrintServer(
             logger("[NETWORK] Acknowledged CUPS PostScript status probe from $clientIp.")
             try {
                 val output = socket.getOutputStream()
-                output.write("False\r\nUnknown\r\n".toByteArray())
+                output.write("False\nUnknown\n".toByteArray())
                 output.flush()
             } catch (_: Exception) {}
             return
