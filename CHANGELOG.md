@@ -4,6 +4,9 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.0.17` — September 3, 2026 at 9:00 AM
+- **TSPL Stream Over-Eagerness Fix**: Replaced `||` with `&&` in TSPL stream detection (`SIZE` && `GAP` && `PRINT`). Fixes bug where CUPS PostScript documents containing the word "print" inside `userdict` definitions were incorrectly ingested as raw TSPL streams instead of being rendered to labels.
+
 ### `v1.0.16` — September 2, 2026 at 11:20 PM
 - **CUPS Probe Reply Formatting Fix**: Fixed carriage return line endings in CUPS PostScript probe replies (`False\nUnknown\n`) preventing macOS from finalizing print handshakes.
 - **Strict TSPL Stream Detection**: Tightened native TSPL command string detection (`CLS `) to prevent false-positive matches on CUPS PostScript variable names (e.g. `Classes`).
