@@ -16,6 +16,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.io.OutputStream
 import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
@@ -39,8 +40,8 @@ class NetworkPrintServer(
     private var registrationListener: NsdManager.RegistrationListener? = null
 
     companion object {
-        val PORTS = intArrayOf(9100, 515)
-        const val SERVICE_TYPE_PDL = "_pdl-datastream._tcp."
+        val PORTS = intArrayOf(9100, 631, 515)
+        const val SERVICE_TYPE_IPP = "_ipp._tcp."
         const val SERVICE_NAME = "Rollo Printer"
     }
 
@@ -48,7 +49,7 @@ class NetworkPrintServer(
         if (isRunning) return
         isRunning = true
         val ipAddress = getLocalIpAddress()
-        logger("[NETWORK] Print Server active on $ipAddress (Ports: 9100, 515)")
+        logger("[NETWORK] Print Server active on $ipAddress (AirPrint / IPP / JetDirect)")
         onStatusChanged(true, ipAddress)
         registerNsdService()
 
@@ -89,7 +90,7 @@ class NetworkPrintServer(
             } catch (_: Exception) {}
         }
         serverSockets.clear()
-        logger("[NETWORK] Print Server Stopped.")
+        logger("Print Server Stopped.")
         onStatusChanged(false, null)
     }
 
@@ -97,26 +98,31 @@ class NetworkPrintServer(
         try {
             nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
             
-            // Register as standard Generic Plug-and-Play JetDirect Network Printer (no driver prompt on clients)
+            // Register Driverless AirPrint / IPP Service (enables macOS, Windows & Linux to auto-select AirPrint without driver prompts)
             val serviceInfo = NsdServiceInfo().apply {
                 serviceName = SERVICE_NAME
-                serviceType = SERVICE_TYPE_PDL
-                port = 9100
+                serviceType = SERVICE_TYPE_IPP
+                port = 631
                 setAttribute("txtvers", "1")
                 setAttribute("qtotal", "1")
-                setAttribute("pdl", "application/pdf,image/png,image/jpeg")
-                setAttribute("rp", "raw")
-                setAttribute("ty", "Generic Label Printer")
-                setAttribute("product", "(Generic Label Printer)")
-                setAttribute("note", "RolloPrint Network Server")
+                setAttribute("pdl", "application/pdf,image/png,image/jpeg,image/urf")
+                setAttribute("rp", "printers/rollo")
+                setAttribute("ty", "Rollo Printer")
+                setAttribute("product", "(Rollo Printer)")
+                setAttribute("note", "RolloPrint AirPrint Server")
                 setAttribute("Color", "F")
                 setAttribute("Duplex", "F")
+                setAttribute("URF", "CP1,SM1,W8,SR203,RS203")
+                setAttribute("kind", "label,document")
+                setAttribute("printer-state", "3")
+                setAttribute("printer-type", "0x0001")
                 setAttribute("papercustom", "4x6in,101.6x152.4mm")
+                setAttribute("UUID", "c0a80132-0000-1000-8000-002501001416")
             }
 
             registrationListener = object : NsdManager.RegistrationListener {
                 override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
-                    logger("[NETWORK] Plug-and-Play Printer (mDNS) Registered: ${serviceInfo.serviceName}")
+                    logger("[NETWORK] Driverless AirPrint Printer (mDNS) Registered: ${serviceInfo.serviceName}")
                 }
                 override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
                     logger("[NETWORK] mDNS Registration Warning: $errorCode")
@@ -142,7 +148,7 @@ class NetworkPrintServer(
 
     private fun handleClientSocket(socket: Socket, port: Int) {
         val clientIp = socket.inetAddress?.hostAddress ?: "Unknown"
-        logger("[NETWORK] Incoming print job from $clientIp on port $port")
+        logger("[NETWORK] Incoming print job connection from $clientIp on port $port")
         Executors.newSingleThreadExecutor().execute {
             try {
                 socket.soTimeout = 1500
@@ -167,15 +173,40 @@ class NetworkPrintServer(
                     // Socket timeout triggers when client finishes streaming payload
                 }
 
+                val jobData = baos.toByteArray()
+
+                // If HTTP request (IPP/CUPS/AirPrint), respond with HTTP 200 OK + IPP successful-ok header to unblock client queue
+                val isHttp = jobData.size > 4 && String(jobData.take(4).toByteArray(), Charsets.US_ASCII).startsWith("POST")
+                if (isHttp) {
+                    try {
+                        val output: OutputStream = socket.getOutputStream()
+                        val responseHeader = "HTTP/1.1 200 OK\r\nContent-Type: application/ipp\r\nConnection: close\r\n\r\n"
+                        val requestId = if (jobData.size >= 8) jobData.copyOfRange(4, 8) else byteArrayOf(0, 0, 0, 1)
+                        val ippResponse = ByteArrayOutputStream().apply {
+                            write(byteArrayOf(0x02, 0x00)) // IPP version 2.0
+                            write(byteArrayOf(0x00, 0x00)) // successful-ok
+                            write(requestId)               // request-id matching client
+                            write(0x01)                    // operation-attributes-tag
+                            write(0x03)                    // end-of-attributes-tag
+                        }.toByteArray()
+
+                        output.write(responseHeader.toByteArray())
+                        output.write(ippResponse)
+                        output.flush()
+                    } catch (_: Exception) {}
+                }
+
+                if (jobData.isEmpty()) {
+                    logger("[NETWORK] Received empty job payload from $clientIp")
+                    try {
+                        socket.close()
+                    } catch (_: Exception) {}
+                    return@execute
+                }
+
                 try {
                     socket.close()
                 } catch (_: Exception) {}
-
-                val jobData = baos.toByteArray()
-                if (jobData.isEmpty()) {
-                    logger("[NETWORK] Received empty job payload from $clientIp")
-                    return@execute
-                }
 
                 logger("[NETWORK] Ingested network job (${jobData.size} bytes) from $clientIp. Converting to local 4x6 PDF...")
                 convertAndPrintNetworkJob(jobData)

@@ -4,6 +4,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.0.19` — September 3, 2026 at 10:00 AM
+- **Driverless AirPrint mDNS Auto-Selection**: Advertised `_ipp._tcp.` on Port 631 with driverless AirPrint TXT record keys (`pdl=application/pdf`, `kind=label,document`, `URF=CP1,SM1...`, `papercustom=4x6in`). macOS, Windows, and Linux auto-select AirPrint / IPP Everywhere automatically without showing the "Choose a Driver..." prompt.
+- **Pure PDF AirPrint Ingestion**: When macOS prints via AirPrint, CUPS sends 100% pure PDF (`%PDF-`). The server ingests the PDF directly into `renderPdfToBitmap` and streams vector graphics to the Rollo X1038 thermal printer without PostScript conversion artifacts.
+
 ### `v1.0.18` — September 3, 2026 at 9:30 AM
 - **Plug-and-Play JetDirect Auto-Discovery**: Advertised as standard `Generic Label Printer` over mDNS (`_pdl-datastream._tcp.`). macOS, Windows, and Linux auto-detect the printer without prompting for vendor drivers or PPDs.
 - **Universal Local PDF Ingestion Pipeline**: Rewrote `NetworkPrintServer` to convert ALL incoming network payloads (PDF, PNG, JPEG, Text, PostScript) into 4x6 203 DPI PDF files stored in app cache, then ingesting them directly into the working local PDF rendering pipeline (`renderPdfToBitmap` -> `printBitmapAsync`), bypassing the preview dialog completely for network jobs.
