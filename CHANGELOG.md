@@ -4,6 +4,11 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.1.0` — September 3, 2026 at 1:00 PM
+- **RFC 8010 Compliant IPP Attribute Encodings**: Fixed IPP multi-value attribute encoding (`name-length = 0` for additional values). Resolves the "That didn't work" error on Windows and "This feature is not available" error on Linux CUPS when adding the printer.
+- **Temporary Network Print Preview**: Configured `IppServer` to trigger the app's `PrintPreviewDialogFragment` when network jobs arrive, allowing visual inspection of the rendered 4x6 label on the phone before confirming hardware streaming.
+- **Full IPP Attribute Group Coverage**: Added required IPP Everywhere attributes (`charset-configured`, `natural-language-configured`, `printer-is-accepting-jobs`, `operations-supported`, `queued-job-count`).
+
 ### `v1.0.20` — September 3, 2026 at 11:30 AM
 - **Driverless IPP Everywhere Server Refactor**: Replaced JetDirect/raw TCP listeners with an embedded HTTP/1.1 IPP server listening on port `8631`.
 - **mDNS Zeroconf Advertising**: Publishes `_ipp._tcp` on port `8631` with `rp="ipp/print"`, `pdl="application/pdf"`, `note="Rollo Thermal 4x6"`, `printer-type="0x4000000"`, `UUID="e5b02130-1c4b-483b-9a99-000000000001"`.

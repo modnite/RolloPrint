@@ -28,7 +28,8 @@ class IppServer(
     private val context: Context,
     private val printManager: UsbPrintManager,
     private val logger: (String) -> Unit,
-    private val onStatusChanged: (Boolean, String?) -> Unit
+    private val onStatusChanged: (Boolean, String?) -> Unit,
+    private val onNetworkBitmapRendered: ((Bitmap) -> Unit)? = null
 ) {
     private var serverSocket: ServerSocket? = null
     @Volatile
@@ -226,19 +227,46 @@ class IppServer(
         ippWriter.addAttribute(0x48, "attributes-natural-language", "en")
 
         ippWriter.startGroup(0x04) // printer-attributes-tag
+        ippWriter.addAttribute(0x47, "charset-configured", "utf-8")
+        ippWriter.addAttribute(0x47, "charset-supported", "utf-8")
+        ippWriter.addAttribute(0x48, "natural-language-configured", "en")
+        ippWriter.addAttribute(0x48, "generated-natural-language-supported", "en")
+
         ippWriter.addIntAttribute(0x23, "printer-state", 3) // 3 = idle
         ippWriter.addAttribute(0x44, "printer-state-reasons", "none")
         ippWriter.addBooleanAttribute("printer-is-accepting-jobs", true)
-        ippWriter.addAttribute(0x44, "ipp-versions-supported", "2.0")
+        ippWriter.addIntAttribute(0x21, "queued-job-count", 0)
+
+        ippWriter.addAttribute(0x44, "ipp-versions-supported", "1.1")
+        ippWriter.addAdditionalValue(0x44, "2.0")
+
+        ippWriter.addIntAttribute(0x23, "operations-supported", 0x0002) // Print-Job
+        ippWriter.addAdditionalInt(0x23, 0x0004)                        // Validate-Job
+        ippWriter.addAdditionalInt(0x23, 0x0009)                        // Get-Job-Attributes
+        ippWriter.addAdditionalInt(0x23, 0x000B)                        // Get-Printer-Attributes
+
         ippWriter.addAttribute(0x49, "document-format-supported", "application/pdf")
-        ippWriter.addResolutionAttribute("printer-resolution-supported", 203, 203)
+        ippWriter.addAdditionalValue(0x49, "image/png")
+        ippWriter.addAdditionalValue(0x49, "image/jpeg")
+        ippWriter.addAdditionalValue(0x49, "application/octet-stream")
+        ippWriter.addAttribute(0x49, "document-format-default", "application/pdf")
+
         ippWriter.addAttribute(0x44, "media-supported", "oe_4x6-label_4x6in")
+        ippWriter.addAdditionalValue(0x44, "na_index-4x6_4x6in")
         ippWriter.addAttribute(0x44, "media-default", "oe_4x6-label_4x6in")
-        ippWriter.addAttribute(0x42, "printer-name", "Rollo Thermal 4x6")
-        ippWriter.addAttribute(0x42, "printer-info", "Rollo Thermal 4x6 Printer")
+        ippWriter.addAttribute(0x44, "media-ready", "oe_4x6-label_4x6in")
+
+        ippWriter.addResolutionAttribute("printer-resolution-supported", 203, 203)
+        ippWriter.addResolutionAttribute("printer-resolution-default", 203, 203)
+
+        ippWriter.addAttribute(0x42, "printer-name", "Rollo Printer")
+        ippWriter.addAttribute(0x41, "printer-info", "Rollo Thermal Printer 4x6")
         ippWriter.addAttribute(0x45, "printer-uri-supported", "ipp://${getLocalIpAddress()}:$PORT/ipp/print")
         ippWriter.addAttribute(0x44, "uri-authentication-supported", "none")
         ippWriter.addAttribute(0x44, "uri-security-supported", "none")
+        ippWriter.addAttribute(0x44, "pdl-override-supported", "not-attempted")
+        ippWriter.addBooleanAttribute("color-supported", false)
+        ippWriter.addIntAttribute(0x21, "printer-up-time", (System.currentTimeMillis() / 1000).toInt())
 
         val responseBytes = ippWriter.build()
         sendIppHttpResponse(socket, responseBytes)
@@ -411,8 +439,14 @@ class IppServer(
         val uri = Uri.fromFile(pdfFile)
         val bitmap = printManager.renderPdfToBitmap(uri)
         if (bitmap != null) {
-            logger("[IPP] PDF converted to 816x1218 bitmap. Streaming to Rollo printer...")
-            printManager.printBitmapAsync(bitmap)
+            logger("[IPP] PDF converted to 816x1218 bitmap.")
+            if (onNetworkBitmapRendered != null) {
+                logger("[IPP] Displaying Print Preview Dialog for Network Job...")
+                onNetworkBitmapRendered.invoke(bitmap)
+            } else {
+                logger("[IPP] Streaming bitmap directly to Rollo printer...")
+                printManager.printBitmapAsync(bitmap)
+            }
         } else {
             logger("[IPP] ERROR: Local PDF rendering engine failed.")
         }
@@ -482,6 +516,17 @@ private class IppResponseWriter(private val requestId: ByteArray, private val st
         baos.write(valueBytes)
     }
 
+    fun addAdditionalValue(valueTag: Byte, value: String) {
+        val valueBytes = value.toByteArray(Charsets.UTF_8)
+
+        baos.write(valueTag.toInt())
+        baos.write(0) // name-length = 0 for additional values per IPP RFC 8010 Section 3.5!
+        baos.write(0)
+        baos.write((valueBytes.size shr 8) and 0xFF)
+        baos.write(valueBytes.size and 0xFF)
+        baos.write(valueBytes)
+    }
+
     fun addIntAttribute(valueTag: Byte, name: String, value: Int) {
         val nameBytes = name.toByteArray(Charsets.UTF_8)
 
@@ -489,6 +534,18 @@ private class IppResponseWriter(private val requestId: ByteArray, private val st
         baos.write((nameBytes.size shr 8) and 0xFF)
         baos.write(nameBytes.size and 0xFF)
         baos.write(nameBytes)
+        baos.write(0)
+        baos.write(4)
+        baos.write((value shr 24) and 0xFF)
+        baos.write((value shr 16) and 0xFF)
+        baos.write((value shr 8) and 0xFF)
+        baos.write(value and 0xFF)
+    }
+
+    fun addAdditionalInt(valueTag: Byte, value: Int) {
+        baos.write(valueTag.toInt())
+        baos.write(0) // name-length = 0
+        baos.write(0)
         baos.write(0)
         baos.write(4)
         baos.write((value shr 24) and 0xFF)

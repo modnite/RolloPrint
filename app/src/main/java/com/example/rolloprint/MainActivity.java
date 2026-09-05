@@ -195,6 +195,10 @@ public class MainActivity extends AppCompatActivity {
                             isUpdatingSwitchProgrammatically = false;
                         });
                         return null;
+                    },
+                    bitmap -> {
+                        runOnUiThread(() -> showPrintPreview(bitmap));
+                        return null;
                     }
             );
         }
