@@ -40,18 +40,18 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             val canvas = Canvas(bitmap)
             canvas.drawColor(Color.WHITE)
 
-            val isLandscape = page.width > page.height
+            val pdfWidth = page.width.toFloat()
+            val pdfHeight = page.height.toFloat()
+
+            val isLandscape = pdfWidth > pdfHeight
+
             if (isLandscape) {
-                val tempW = page.height
-                val tempH = page.width
-                val scale = Math.min(TARGET_WIDTH.toFloat() / tempW, TARGET_HEIGHT.toFloat() / tempH)
-                val renderW = (page.width * scale).toInt()
-                val renderH = (page.height * scale).toInt()
+                val scale = Math.min(TARGET_WIDTH.toFloat() / pdfHeight, TARGET_HEIGHT.toFloat() / pdfWidth)
+                val renderW = (pdfWidth * scale).toInt()
+                val renderH = (pdfHeight * scale).toInt()
 
                 val pageBitmap = Bitmap.createBitmap(renderW, renderH, Bitmap.Config.ARGB_8888)
-                val pageCanvas = Canvas(pageBitmap)
-                pageCanvas.drawColor(Color.WHITE)
-                page.render(pageBitmap, Rect(0, 0, renderW, renderH), null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                page.render(pageBitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
 
                 val matrix = Matrix().apply {
                     postRotate(90f)
@@ -63,9 +63,9 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                 canvas.drawBitmap(pageBitmap, matrix, null)
                 pageBitmap.recycle()
             } else {
-                val scale = Math.min(TARGET_WIDTH.toFloat() / page.width, TARGET_HEIGHT.toFloat() / page.height)
-                val renderWidth = (page.width * scale).toInt()
-                val renderHeight = (page.height * scale).toInt()
+                val scale = Math.min(TARGET_WIDTH.toFloat() / pdfWidth, TARGET_HEIGHT.toFloat() / pdfHeight)
+                val renderWidth = (pdfWidth * scale).toInt()
+                val renderHeight = (pdfHeight * scale).toInt()
                 val left = (TARGET_WIDTH - renderWidth) / 2
                 val top = (TARGET_HEIGHT - renderHeight) / 2
 
@@ -76,7 +76,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             page.close()
             renderer.close()
             fd.close()
-            
+
             logger("PDF Rendered successfully (816x1218)")
             bitmap
         } catch (e: Exception) {
@@ -85,17 +85,13 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         }
     }
 
-    /**
-     * Requirement: Fixed Bit-Packing with INVERTED Polarity as default.
-     * This was confirmed to produce successful prints on the Rollo X1038.
-     */
     private fun generateTsplPayload(bitmap: Bitmap): ByteArray {
-        logger("Packing Bitmap (Inverted Polarity Fixed)...")
+        logger("Packing Bitmap (816x1218)...")
         val width = bitmap.width
         val height = bitmap.height
-        val widthBytes = width / 8
+        val widthBytes = 102
         val totalBytes = widthBytes * height
-        
+
         val monoData = ByteArray(totalBytes)
         val pixels = IntArray(width * height)
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
@@ -108,8 +104,6 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                 val b = pixel and 0xFF
                 val luminance = (0.299 * r + 0.587 * g + 0.114 * b)
 
-                // Rollo X1038 Polarity: 1 = Paper, 0 = Ink (Inverted)
-                // We send 1 if the pixel is LIGHT (>=128) and 0 if it is DARK (<128).
                 if (luminance >= 128) {
                     val byteIdx = y * widthBytes + (x / 8)
                     val bitShift = 7 - (x % 8)
@@ -119,18 +113,18 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         }
 
         val baos = ByteArrayOutputStream()
-        baos.write("SIZE 4.0,6.0\r\n".toByteArray())
-        baos.write("GAP 0,0\r\n".toByteArray())
-        baos.write("DIRECTION 1\r\n".toByteArray())
-        baos.write("REFERENCE 0,0\r\n".toByteArray())
-        baos.write("SET TEAR ON\r\n".toByteArray())
-        baos.write("CLS\r\n".toByteArray())
-        
-        val header = "BITMAP 0,0,$widthBytes,$height,0,".toByteArray()
-        baos.write(header)
+        baos.write("SIZE 102 mm,153 mm\n".toByteArray())
+        baos.write("REFERENCE 0,0\n".toByteArray())
+        baos.write("DIRECTION 0,0\n".toByteArray())
+        baos.write("GAP 3 mm,0 mm\n".toByteArray())
+        baos.write("OFFSET 0 mm\n".toByteArray())
+        baos.write("DENSITY 8\n".toByteArray())
+        baos.write("SPEED 6\n".toByteArray())
+        baos.write("CLS\n".toByteArray())
+        baos.write("BITMAP 0,0,102,1218,1,".toByteArray())
         baos.write(monoData)
-        baos.write("\r\nPRINT 1,1\r\n".toByteArray())
-        
+        baos.write("\nPRINT 1,1\n".toByteArray())
+
         return baos.toByteArray()
     }
 
@@ -139,7 +133,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             try {
                 val tsplData = generateTsplPayload(bitmap)
                 val device = findRolloDevice()
-                
+
                 if (device == null) {
                     logger("CRITICAL: Rollo X1038 not found.")
                     return@execute
@@ -212,18 +206,18 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             }
 
             logger("Streaming data stream (${data.size} bytes)...")
-            
+
             val chunkSize = 1024
             var bytesSent = 0
             while (bytesSent < data.size) {
                 val length = Math.min(chunkSize, data.size - bytesSent)
                 val result = connection.bulkTransfer(endpoint, data, bytesSent, length, 5000)
-                
+
                 if (result < 0) {
                     logger("ERROR: Hardware Transfer Failure.")
                     break
                 }
-                
+
                 bytesSent += result
                 Thread.sleep(10)
             }

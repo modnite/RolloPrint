@@ -82,8 +82,7 @@ class PrintServerService : Service() {
     fun initializeServer(
         usbPrintManager: UsbPrintManager,
         logger: (String) -> Unit,
-        onStatusChanged: (Boolean, String?) -> Unit,
-        onNetworkBitmapRendered: ((Bitmap) -> Unit)? = null
+        onStatusChanged: (Boolean, String?) -> Unit
     ) {
         if (ippServer == null) {
             ippServer = IppServer(this, usbPrintManager, { logMsg ->
@@ -92,7 +91,7 @@ class PrintServerService : Service() {
                 isServerRunning = running
                 updateNotification(if (running) "Active on $ip:$PORT" else "Server Stopped")
                 onStatusChanged(running, ip)
-            }, onNetworkBitmapRendered)
+            })
         }
         ippServer?.start()
         registerNsdService(logger)

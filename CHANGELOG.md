@@ -4,6 +4,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.3.0` — September 3, 2026 at 5:00 PM
+- **Direct Network Print (No Dialogs)**: Incoming IPP print jobs bypass all UI preview dialogs, converting to 4x6 203 DPI bitmaps and streaming directly to the USB bulk endpoint in the background with activity logging.
+- **Show Preview for Local Prints Settings Switch**: Added a MaterialSwitch in the main UI (`Show Preview for Local Prints`, persisted in `SharedPreferences`, default `true`). Controls whether local PDF prints prompt for confirmation before sending to USB.
+- **Aspect-Ratio Preserving Letterbox/Pillarbox PDF Renderer**: Calculates `min(816.0 / pdfWidth, 1218.0 / pdfHeight)` and centers scaled pages on an 816x1218 white canvas, ensuring non-4x6 documents (e.g. Letter, US Standard, or square slips) print centered without distortion or truncation.
+- **Media Expansion**: Added `"na_letter_8.5x11in"` to `media-supported` in `Get-Printer-Attributes` so desktop print queues do not reject jobs.
+
 ### `v1.2.0` — September 3, 2026 at 4:00 PM
 - **mDNS Service Layer Update**: Configured `_ipp._tcp` on port `8631` with exact driverless discovery TXT keys (`txtvers`, `ty`, `product`, `rp`, `pdl="image/pwg-raster,application/pdf"`, `qtotal`, `printer-state`, `printer-type`, `note`, `UUID`).
 - **HTTP Transport Refactor (Catch-All & Chunked Decoder)**:

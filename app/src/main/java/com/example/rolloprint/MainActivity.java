@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.hardware.usb.UsbManager;
@@ -42,8 +43,10 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap lastRenderedBitmap;
 
     private MaterialSwitch switchServer;
+    private MaterialSwitch switchLocalPreview;
     private TextView tvServerStatus;
     private PrintServerService printServerService;
+    private SharedPreferences prefs;
     private boolean isServiceBound = false;
     private boolean isUpdatingSwitchProgrammatically = false;
 
@@ -89,6 +92,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        prefs = getSharedPreferences("rollo_prefs", MODE_PRIVATE);
+
         // Enable edge-to-edge drawing so layout responds to system bars & display cutouts (camera punch hole)
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
@@ -115,7 +120,16 @@ public class MainActivity extends AppCompatActivity {
         scrollView = findViewById(R.id.scrollView);
         Button btnSelect = findViewById(R.id.btnSelect);
         switchServer = findViewById(R.id.switchServer);
+        switchLocalPreview = findViewById(R.id.switchLocalPreview);
         tvServerStatus = findViewById(R.id.tvServerStatus);
+
+        boolean showLocalPreview = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
+        switchLocalPreview.setChecked(showLocalPreview);
+
+        switchLocalPreview.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("PREF_LOCAL_PREVIEW", isChecked).apply();
+            log("[SETTINGS] Show Preview for Local Prints set to: " + isChecked);
+        });
 
         printManager = new UsbPrintManager(this, text -> {
             log(text);
@@ -159,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.2.0";
+        String appVersion = "1.3.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -194,10 +208,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                             isUpdatingSwitchProgrammatically = false;
                         });
-                        return null;
-                    },
-                    bitmap -> {
-                        runOnUiThread(() -> showPrintPreview(bitmap));
                         return null;
                     }
             );
@@ -277,7 +287,13 @@ public class MainActivity extends AppCompatActivity {
         Bitmap bitmap = printManager.renderPdfToBitmap(uri);
         if (bitmap != null) {
             lastRenderedBitmap = bitmap;
-            showPrintPreview(bitmap);
+            boolean showPreview = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
+            if (showPreview) {
+                showPrintPreview(bitmap);
+            } else {
+                log("[LOCAL] Local preview disabled in settings. Streaming directly to Rollo...");
+                printManager.printBitmapAsync(bitmap);
+            }
         }
     }
 
