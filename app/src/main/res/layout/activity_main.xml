@@ -11,7 +11,7 @@
     android:background="?attr/colorSurface"
     tools:context=".MainActivity">
 
-    <!-- Top Header Card with Logo, Title, Version and Settings Cog Wheel -->
+    <!-- Top Header Card with Title, Version and Settings Cog Wheel -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardHeader"
         android:layout_width="match_parent"
@@ -29,13 +29,6 @@
             android:gravity="center_vertical"
             android:padding="16dp">
 
-            <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:src="@drawable/ic_launcher"
-                android:contentDescription="Rollo Logo"
-                android:layout_marginEnd="12dp" />
-
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -45,7 +38,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Rollo Print"
+                    android:text="RolloPrint"
                     android:textAppearance="?attr/textAppearanceTitleLarge"
                     android:textColor="?attr/colorOnSurface"
                     android:textStyle="bold" />
@@ -54,7 +47,7 @@
                     android:id="@+id/tvHeaderVersion"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="v1.3.1"
+                    android:text="v1.3.2"
                     android:textAppearance="?attr/textAppearanceBodySmall"
                     android:textColor="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
@@ -159,10 +152,10 @@
         android:textColor="?attr/colorOnSurface"
         android:layout_marginBottom="8dp" />
 
-    <!-- Compact Shorter Activity Log Console (180dp Height) -->
+    <!-- Balanced Activity Log Console Height (260dp) -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
-        android:layout_height="180dp"
+        android:layout_height="260dp"
         app:cardCornerRadius="12dp"
         app:cardElevation="0dp"
         app:strokeWidth="1dp"

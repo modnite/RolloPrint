@@ -4,6 +4,11 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.3.2` — September 3, 2026 at 7:00 PM
+- **App Launcher Icon Updated**: Re-propagated custom Rollo Thermal Printer logo PNG across all mipmap density folders and generated round launcher icons (`ic_launcher_round.png`).
+- **Clean UI Title Header**: Removed the image icon from the top title card and formatted the app title cleanly as a single word: **`RolloPrint`**.
+- **Optimized Activity Log Console Height**: Adjusted activity log card height to `260dp` (a comfortable middle ground), ensuring ample log visibility while keeping the main action cards spacious.
+
 ### `v1.3.1` — September 3, 2026 at 6:00 PM
 - **New App Icon**: Updated app launcher icon across all pixel densities using custom Rollo Thermal Printer artwork.
 - **Settings Cog Wheel Dialog**: Added a Cog Wheel button in the UI header opening a dedicated Print Settings dialog with toggles for both "Preview Local Prints" (`PREF_LOCAL_PREVIEW`, default `true`) and "Preview Network Prints" (`PREF_NETWORK_PREVIEW`, default `false`).

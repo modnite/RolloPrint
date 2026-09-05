@@ -170,14 +170,14 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.3.1";
+        String appVersion = "1.3.2";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
 
         tvHeaderVersion.setText("v" + appVersion);
 
-        log("Rollo Print v" + appVersion + " Loaded.");
+        log("RolloPrint v" + appVersion + " Loaded.");
         log("Ready to print 4x6 PDF labels.");
 
         // Proactively request all runtime permissions on first open
