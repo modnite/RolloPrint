@@ -4,6 +4,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.5.0` — September 4, 2026 at 1:00 AM
+- **Real-Time Hardware Status Polling (`<ESC>!?`)**: Added background status polling every 3 seconds using verified Rollo X1038 status command `0x1B, 0x21, 0x3F` (`<ESC>!?`) over USB bulk endpoints.
+- **Hardware Queue Purge (`~!C`)**: Updated the "Clear Queue" button to send `0x7E, 0x21, 0x43` (`~!C`) directly over USB to purge the Rollo printer's onboard RAM buffer memory and halt label feeding immediately.
+- **Main UI Hardware Status Badge**: Displays real-time hardware status in the app header card (`● Hardware: Ready`, `● Hardware: Out of Paper (Red LED)`, `● Hardware: Cover Open`).
+- **IPP State Synchronization**: Automatically synchronizes IPP `printer-state` (idle vs stopped) and `printer-state-reasons` (`media-empty-error`, `door-open-error`, `none`) with real-time USB hardware states.
+
 ### `v1.4.4` — September 3, 2026 at 11:59 PM
 - **Pre-Payload Hardware Soft Reset (`~@`)**: Prepended TSPL soft reset byte sequence (`byteArrayOf(0x7E, 0x40, 0x0D, 0x0A)`) directly to the head of every TSPL bitmap payload. When thermal paper is loaded, `~@` instantly flushes any unexecuted page commands previously sitting in the Rollo printer's internal RAM.
 

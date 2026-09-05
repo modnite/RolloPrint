@@ -17,6 +17,9 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 class PrintServerService : Service() {
 
@@ -26,6 +29,7 @@ class PrintServerService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private var pollExecutor: ScheduledExecutorService? = null
 
     private var nsdManager: NsdManager? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
@@ -96,7 +100,26 @@ class PrintServerService : Service() {
             }, onNetworkBitmapRendered)
         }
         ippServer?.start()
+        startStatusPolling(usbPrintManager)
         registerNsdService(logger)
+    }
+
+    private fun startStatusPolling(usbPrintManager: UsbPrintManager) {
+        if (pollExecutor == null) {
+            pollExecutor = Executors.newSingleThreadScheduledExecutor()
+            pollExecutor?.scheduleWithFixedDelay({
+                if (isServerRunning) {
+                    usbPrintManager.pollHardwareStatus()
+                }
+            }, 1, 3, TimeUnit.SECONDS)
+        }
+    }
+
+    private fun stopStatusPolling() {
+        try {
+            pollExecutor?.shutdownNow()
+        } catch (_: Exception) {}
+        pollExecutor = null
     }
 
     private fun registerNsdService(logger: (String) -> Unit) {
@@ -148,6 +171,7 @@ class PrintServerService : Service() {
 
     fun stopServer() {
         ippServer?.stop()
+        stopStatusPolling()
         unregisterNsdService()
         releasePowerLocks()
         isServerRunning = false

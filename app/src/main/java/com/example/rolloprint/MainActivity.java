@@ -152,6 +152,30 @@ public class MainActivity extends AppCompatActivity {
             return null;
         });
 
+        TextView tvHardwareStatus = findViewById(R.id.tvHardwareStatus);
+
+        printManager.setOnHardwareStateChanged(states -> {
+            runOnUiThread(() -> {
+                if (states.contains(HardwareState.HEAD_OPEN)) {
+                    tvHardwareStatus.setText("● Hardware: Cover Open");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark));
+                } else if (states.contains(HardwareState.OUT_OF_PAPER)) {
+                    tvHardwareStatus.setText("● Hardware: Out of Paper (Red LED)");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
+                } else if (states.contains(HardwareState.READY)) {
+                    tvHardwareStatus.setText("● Hardware: Ready (Green LED)");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark));
+                } else if (states.contains(HardwareState.PRINTING)) {
+                    tvHardwareStatus.setText("● Hardware: Printing...");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
+                } else {
+                    tvHardwareStatus.setText("● Hardware: Disconnected / Unknown");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+                }
+            });
+            return null;
+        });
+
         jobQueueManager = new JobQueueManager(
                 printManager,
                 text -> {
@@ -172,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
 
         btnClearQueue.setOnClickListener(v -> {
             jobQueueManager.clearQueue();
-            printManager.clearHardwareBufferAsync();
+            printManager.clearHardwareQueue();
         });
 
         View layoutLogHeaderClickable = findViewById(R.id.layoutLogHeaderClickable);
@@ -225,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.4.4";
+        String appVersion = "1.5.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}

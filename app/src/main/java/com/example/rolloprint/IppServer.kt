@@ -307,6 +307,27 @@ class IppServer(
         val printerMoreInfo = URI("http://${getLocalIpAddress()}:$PORT/")
         val printerUuid = URI("urn:uuid:e5b02130-1c4b-483b-9a99-000000000001")
 
+        val states = printManager.getCurrentHardwareState()
+        val printerState = if (states.contains(HardwareState.HEAD_OPEN) || states.contains(HardwareState.OUT_OF_PAPER)) {
+            PrinterState.stopped
+        } else {
+            PrinterState.idle
+        }
+
+        val stateReasons = mutableListOf<String>()
+        if (states.contains(HardwareState.HEAD_OPEN)) {
+            stateReasons.add("door-open-error")
+        }
+        if (states.contains(HardwareState.OUT_OF_PAPER)) {
+            stateReasons.add("media-empty-error")
+        }
+        if (states.contains(HardwareState.PAUSED)) {
+            stateReasons.add("paused")
+        }
+        if (stateReasons.isEmpty()) {
+            stateReasons.add("none")
+        }
+
         val opGroup = MutableAttributeGroup(
             Tag.operationAttributes,
             listOf(
@@ -346,8 +367,8 @@ class IppServer(
                 Types.charsetSupported.of("utf-8"),
                 Types.naturalLanguageConfigured.of("en"),
                 Types.generatedNaturalLanguageSupported.of("en"),
-                Types.printerState.of(PrinterState.idle),
-                Types.printerStateReasons.of(PrinterStateReason.none),
+                Types.printerState.of(printerState),
+                Types.printerStateReasons.of(stateReasons),
                 Types.printerIsAcceptingJobs.of(true),
                 Types.queuedJobCount.of(0),
                 Types.ippVersionsSupported.of("1.1", "2.0"),
