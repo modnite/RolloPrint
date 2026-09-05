@@ -51,7 +51,7 @@
                         android:id="@+id/tvServerStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Status: Disabled (Port 9100)"
+                        android:text="Status: Disabled (Port 8631)"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:layout_marginTop="2dp" />

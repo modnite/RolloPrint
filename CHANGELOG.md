@@ -4,6 +4,13 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.0.20` — September 3, 2026 at 11:30 AM
+- **Driverless IPP Everywhere Server Refactor**: Replaced JetDirect/raw TCP listeners with an embedded HTTP/1.1 IPP server listening on port `8631`.
+- **mDNS Zeroconf Advertising**: Publishes `_ipp._tcp` on port `8631` with `rp="ipp/print"`, `pdl="application/pdf"`, `note="Rollo Thermal 4x6"`, `printer-type="0x4000000"`, `UUID="e5b02130-1c4b-483b-9a99-000000000001"`.
+- **Standard IPP 2.0 Operations**: Full handling of `Get-Printer-Attributes`, `Validate-Job`, `Print-Job` / `Send-Document`, and `Get-Job-Attributes`.
+- **Verified Rollo TSPL Bitmap Packaging**: Converts incoming PDF pages into 816x1218 @ 203 DPI bitmaps and packages them into the strict Rollo TSPL structure (`SIZE 102 mm,153 mm`, `GAP 3 mm,0 mm`, `DENSITY 8`, `SPEED 6`, `BITMAP 0,0,102,1218,1,[mono_bytes]`).
+- **Power & Service Management**: Foreground Service with `WakeLock` (`PARTIAL_WAKE_LOCK`) and `WifiLock` (`WIFI_MODE_FULL_HIGH_PERF`) to prevent Wi-Fi sleep and connection drops when phone screen is locked.
+
 ### `v1.0.19` — September 3, 2026 at 10:00 AM
 - **Driverless AirPrint mDNS Auto-Selection**: Advertised `_ipp._tcp.` on Port 631 with driverless AirPrint TXT record keys (`pdl=application/pdf`, `kind=label,document`, `URF=CP1,SM1...`, `papercustom=4x6in`). macOS, Windows, and Linux auto-select AirPrint / IPP Everywhere automatically without showing the "Choose a Driver..." prompt.
 - **Pure PDF AirPrint Ingestion**: When macOS prints via AirPrint, CUPS sends 100% pure PDF (`%PDF-`). The server ingests the PDF directly into `renderPdfToBitmap` and streams vector graphics to the Rollo X1038 thermal printer without PostScript conversion artifacts.

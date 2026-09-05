@@ -1,0 +1,220 @@
+package com.example.rolloprint
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.net.nsd.NsdManager
+import android.net.nsd.NsdServiceInfo
+import android.net.wifi.WifiManager
+import android.os.Binder
+import android.os.Build
+import android.os.IBinder
+import android.os.PowerManager
+import androidx.core.app.NotificationCompat
+
+class PrintServerService : Service() {
+
+    private val binder = LocalBinder()
+    var ippServer: IppServer? = null
+        private set
+
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+
+    private var nsdManager: NsdManager? = null
+    private var registrationListener: NsdManager.RegistrationListener? = null
+
+    companion object {
+        const val CHANNEL_ID = "rollo_print_server_channel"
+        const val NOTIFICATION_ID = 1001
+        const val ACTION_START = "com.example.rolloprint.START_SERVER"
+        const val ACTION_STOP = "com.example.rolloprint.STOP_SERVER"
+        const val PORT = 8631
+        const val SERVICE_TYPE = "_ipp._tcp."
+        const val SERVICE_NAME = "Rollo Printer"
+
+        var isServerRunning = false
+            private set
+    }
+
+    inner class LocalBinder : Binder() {
+        fun getService(): PrintServerService = this@PrintServerService
+    }
+
+    override fun onBind(intent: Intent?): IBinder = binder
+
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_STOP -> {
+                stopServer()
+                stopSelf()
+            }
+            ACTION_START, null -> {
+                startForegroundServer()
+            }
+        }
+        return START_STICKY
+    }
+
+    private fun startForegroundServer() {
+        val notification = createNotification("Initializing IPP Print Server...")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+        isServerRunning = true
+
+        acquirePowerLocks()
+    }
+
+    fun initializeServer(usbPrintManager: UsbPrintManager, logger: (String) -> Unit, onStatusChanged: (Boolean, String?) -> Unit) {
+        if (ippServer == null) {
+            ippServer = IppServer(this, usbPrintManager, { logMsg ->
+                logger(logMsg)
+            }, { running, ip ->
+                isServerRunning = running
+                updateNotification(if (running) "Active on $ip:$PORT" else "Server Stopped")
+                onStatusChanged(running, ip)
+            })
+        }
+        ippServer?.start()
+        registerNsdService(logger)
+    }
+
+    private fun registerNsdService(logger: (String) -> Unit) {
+        try {
+            nsdManager = getSystemService(NSD_SERVICE) as NsdManager
+            val serviceInfo = NsdServiceInfo().apply {
+                serviceName = SERVICE_NAME
+                serviceType = SERVICE_TYPE
+                port = PORT
+                setAttribute("rp", "ipp/print")
+                setAttribute("pdl", "application/pdf")
+                setAttribute("note", "Rollo Thermal 4x6")
+                setAttribute("qtotal", "1")
+                setAttribute("printer-state", "3")
+                setAttribute("printer-type", "0x4000000")
+                setAttribute("UUID", "e5b02130-1c4b-483b-9a99-000000000001")
+            }
+
+            registrationListener = object : NsdManager.RegistrationListener {
+                override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
+                    logger("[mDNS] Registered _ipp._tcp service: ${serviceInfo.serviceName} on port $PORT")
+                }
+                override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                    logger("[mDNS] Registration failed: $errorCode")
+                }
+                override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {
+                    logger("[mDNS] Unregistered _ipp._tcp service")
+                }
+                override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {}
+            }
+
+            nsdManager?.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener)
+        } catch (e: Exception) {
+            logger("[mDNS] Setup error: ${e.message}")
+        }
+    }
+
+    private fun unregisterNsdService() {
+        try {
+            if (registrationListener != null) {
+                nsdManager?.unregisterService(registrationListener)
+                registrationListener = null
+            }
+        } catch (_: Exception) {}
+    }
+
+    fun stopServer() {
+        ippServer?.stop()
+        unregisterNsdService()
+        releasePowerLocks()
+        isServerRunning = false
+        stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    private fun acquirePowerLocks() {
+        try {
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RolloPrint::IppServerWakeLock").apply {
+                acquire(12 * 60 * 60 * 1000L)
+            }
+
+            val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+            wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "RolloPrint::IppServerWifiLock").apply {
+                acquire()
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun releasePowerLocks() {
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+            wakeLock = null
+            if (wifiLock?.isHeld == true) wifiLock?.release()
+            wifiLock = null
+        } catch (_: Exception) {}
+    }
+
+    private fun updateNotification(statusText: String) {
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        try {
+            notificationManager.notify(NOTIFICATION_ID, createNotification(statusText))
+        } catch (_: Exception) {}
+    }
+
+    private fun createNotification(statusText: String): Notification {
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val stopIntent = Intent(this, PrintServerService::class.java).apply {
+            action = ACTION_STOP
+        }
+        val stopPendingIntent = PendingIntent.getService(
+            this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Rollo IPP Print Server")
+            .setContentText(statusText)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentIntent(pendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop Server", stopPendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Rollo IPP Server Service",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Foreground notification for IPP driverless print server"
+            }
+            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    override fun onDestroy() {
+        stopServer()
+        super.onDestroy()
+    }
+}
