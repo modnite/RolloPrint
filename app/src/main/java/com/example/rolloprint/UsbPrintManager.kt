@@ -185,6 +185,61 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         }
     }
 
+    fun runPrinterDiagnosticsAsync() {
+        executor.execute {
+            try {
+                logger("[DIAGNOSTIC] Starting Rollo USB hardware diagnostic check...")
+                val device = findRolloDevice()
+                if (device == null) {
+                    logger("[DIAGNOSTIC] FAIL: Rollo USB device not detected.")
+                    return@execute
+                }
+                if (!usbManager.hasPermission(device)) {
+                    logger("[DIAGNOSTIC] FAIL: USB permission not granted.")
+                    requestPermission(device)
+                    return@execute
+                }
+
+                val connection = usbManager.openDevice(device)
+                if (connection == null) {
+                    logger("[DIAGNOSTIC] FAIL: Could not open USB connection.")
+                    return@execute
+                }
+
+                try {
+                    val usbInterface = device.getInterface(0)
+                    if (!connection.claimInterface(usbInterface, true)) {
+                        logger("[DIAGNOSTIC] FAIL: USB Interface 0 is busy.")
+                        return@execute
+                    }
+
+                    logger("[DIAGNOSTIC] Querying status (~!S)...")
+                    val status = queryPrinterStatus(connection, usbInterface)
+                    logger("[DIAGNOSTIC] Status Query ~!S Result: code = $status (0x${if (status >= 0) status.toString(16) else "ERR"})")
+
+                    if (status == 0) {
+                        logger("[DIAGNOSTIC] HARDWARE STATUS: READY (Paper loaded, Green LED)")
+                    } else if (status > 0) {
+                        val flags = mutableListOf<String>()
+                        if ((status and 0x01) != 0) flags.add("Head Opened")
+                        if ((status and 0x02) != 0) flags.add("Paper Jam")
+                        if ((status and 0x04) != 0) flags.add("Out of Paper (Red LED)")
+                        if ((status and 0x08) != 0) flags.add("Paused")
+                        logger("[DIAGNOSTIC] HARDWARE STATUS: ERROR/PAUSED -> Flags: ${flags.joinToString(", ")}")
+                    } else {
+                        logger("[DIAGNOSTIC] HARDWARE STATUS: Status query timeout on USB IN endpoint.")
+                    }
+
+                    connection.releaseInterface(usbInterface)
+                } finally {
+                    connection.close()
+                }
+            } catch (e: Exception) {
+                logger("[DIAGNOSTIC] Exception during status check: ${e.message}")
+            }
+        }
+    }
+
     private fun queryPrinterStatus(connection: UsbDeviceConnection, usbInterface: UsbInterface): Int {
         try {
             val endpointOut = (0 until usbInterface.endpointCount)
@@ -195,18 +250,33 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                 .map { usbInterface.getEndpoint(it) }
                 .find { it.type == UsbConstants.USB_ENDPOINT_XFER_BULK && it.direction == UsbConstants.USB_DIR_IN }
 
-            if (endpointOut == null || endpointIn == null) return -1
+            if (endpointOut == null || endpointIn == null) {
+                logger("[DIAGNOSTIC] Endpoint OUT or IN mismatch.")
+                return -1
+            }
 
             val statusQueryCmd = "\r\n~!S\r\n".toByteArray(Charsets.US_ASCII)
-            val sent = connection.bulkTransfer(endpointOut, statusQueryCmd, statusQueryCmd.size, 500)
-            if (sent <= 0) return -1
+            val sent = connection.bulkTransfer(endpointOut, statusQueryCmd, statusQueryCmd.size, 1000)
+            if (sent <= 0) {
+                logger("[DIAGNOSTIC] Bulk transfer OUT (~!S) failed.")
+                return -1
+            }
 
+            // Retry read up to 3 times to account for USB hub buffering
             val response = ByteArray(1)
-            val read = connection.bulkTransfer(endpointIn, response, response.size, 500)
-            if (read <= 0) return -1
-
-            return response[0].toInt() and 0xFF
-        } catch (_: Exception) {
+            for (attempt in 1..3) {
+                val read = connection.bulkTransfer(endpointIn, response, response.size, 800)
+                if (read > 0) {
+                    val statusByte = response[0].toInt() and 0xFF
+                    logger("[DIAGNOSTIC] Bulk transfer IN received $read byte(s): 0x${statusByte.toString(16)}")
+                    return statusByte
+                }
+                Thread.sleep(50)
+            }
+            logger("[DIAGNOSTIC] Bulk transfer IN timed out after 3 attempts.")
+            return -1
+        } catch (e: Exception) {
+            logger("[DIAGNOSTIC] queryPrinterStatus Exception: ${e.message}")
             return -1
         }
     }

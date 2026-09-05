@@ -225,7 +225,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.4.2";
+        String appVersion = "1.4.3";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -246,6 +246,7 @@ public class MainActivity extends AppCompatActivity {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_settings, null);
         MaterialSwitch switchLocal = dialogView.findViewById(R.id.switchLocalPreviewDialog);
         MaterialSwitch switchNetwork = dialogView.findViewById(R.id.switchNetworkPreviewDialog);
+        Button btnDiagnostics = dialogView.findViewById(R.id.btnDiagnostics);
 
         boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
         boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
@@ -262,6 +263,13 @@ public class MainActivity extends AppCompatActivity {
             prefs.edit().putBoolean("PREF_NETWORK_PREVIEW", isChecked).apply();
             log("[SETTINGS] Preview Network Prints set to: " + isChecked);
         });
+
+        if (btnDiagnostics != null) {
+            btnDiagnostics.setOnClickListener(v -> {
+                log("[DIAGNOSTIC] Running hardware status check...");
+                printManager.runPrinterDiagnosticsAsync();
+            });
+        }
 
         new MaterialAlertDialogBuilder(this)
                 .setView(dialogView)
