@@ -307,6 +307,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
     private fun updateHardwareState(newState: Set<HardwareState>) {
         if (currentHardwareStates != newState) {
             currentHardwareStates = newState
+            logger("[HARDWARE_STATE] Transitioned to: [${newState.joinToString(", ")}]")
             onHardwareStateChanged?.invoke(newState)
         }
     }
@@ -334,7 +335,9 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
     private fun executeUsbTransfer(device: UsbDevice, data: ByteArray): Boolean {
         synchronized(usbLock) {
-            logger("Connecting to Rollo hardware...")
+            val hwStateStr = currentHardwareStates.joinToString(", ")
+            logger("[JOB_TRANSFER] Starting USB transfer (${data.size} bytes) | Hardware State: [$hwStateStr]")
+            
             val connection = usbManager.openDevice(device) ?: run {
                 logger("ERROR: Connection failed.")
                 return false
@@ -356,8 +359,6 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                     return false
                 }
 
-                logger("Streaming data stream (${data.size} bytes)...")
-
                 val chunkSize = 1024
                 var bytesSent = 0
                 while (bytesSent < data.size) {
@@ -375,11 +376,14 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
                 connection.releaseInterface(usbInterface)
 
+                val postHwStateStr = currentHardwareStates.joinToString(", ")
                 if (bytesSent == data.size) {
-                    logger("SUCCESS: Job confirmed by printer hardware.")
+                    logger("[JOB_TRANSFER] SUCCESS: Sent $bytesSent/${data.size} bytes | Hardware State: [$postHwStateStr]")
                     return true
+                } else {
+                    logger("[JOB_TRANSFER] FAIL: Sent $bytesSent/${data.size} bytes | Hardware State: [$postHwStateStr]")
+                    return false
                 }
-                return false
             } finally {
                 connection.close()
             }
