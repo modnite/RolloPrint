@@ -155,6 +155,37 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         }
     }
 
+    fun clearHardwareBufferAsync() {
+        executor.execute {
+            try {
+                val device = findRolloDevice() ?: return@execute
+                if (!usbManager.hasPermission(device)) return@execute
+
+                val connection = usbManager.openDevice(device) ?: return@execute
+                try {
+                    val usbInterface = device.getInterface(0)
+                    if (connection.claimInterface(usbInterface, true)) {
+                        val endpointOut = (0 until usbInterface.endpointCount)
+                            .map { usbInterface.getEndpoint(it) }
+                            .find { it.type == UsbConstants.USB_ENDPOINT_XFER_BULK && it.direction == UsbConstants.USB_DIR_OUT }
+
+                        if (endpointOut != null) {
+                            logger("[HARDWARE] Sending TSPL abort & buffer purge (~@, CLS) to Rollo hardware...")
+                            val killCmd = "\r\n~@\r\nCLS\r\n".toByteArray(Charsets.US_ASCII)
+                            connection.bulkTransfer(endpointOut, killCmd, killCmd.size, 1000)
+                            logger("[HARDWARE] Rollo internal RAM buffer cleared successfully.")
+                        }
+                        connection.releaseInterface(usbInterface)
+                    }
+                } finally {
+                    connection.close()
+                }
+            } catch (e: Exception) {
+                logger("[HARDWARE] Hardware buffer clear notice: ${e.message}")
+            }
+        }
+    }
+
     private fun findRolloDevice(): UsbDevice? {
         return usbManager.deviceList.values.find { it.vendorId == ROLLO_VID && it.productId == ROLLO_PID }
     }

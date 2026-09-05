@@ -170,7 +170,10 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        btnClearQueue.setOnClickListener(v -> jobQueueManager.clearQueue());
+        btnClearQueue.setOnClickListener(v -> {
+            jobQueueManager.clearQueue();
+            printManager.clearHardwareBufferAsync();
+        });
 
         View layoutLogHeaderClickable = findViewById(R.id.layoutLogHeaderClickable);
         ImageView ivLogExpandArrow = findViewById(R.id.ivLogExpandArrow);
@@ -222,7 +225,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.4.0";
+        String appVersion = "1.4.1";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}

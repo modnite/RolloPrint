@@ -4,6 +4,9 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.4.1` — September 3, 2026 at 10:30 PM
+- **Rollo Hardware Memory Buffer Purge (`clearHardwareBufferAsync`)**: Updated the "Clear Queue" button to send TSPL soft-reset and buffer purge commands (`~@`, `CLS`) directly to the Rollo printer over USB. This clears the printer's internal RAM buffer so old jobs do not print out when paper is reloaded.
+
 ### `v1.4.0` — September 3, 2026 at 10:00 PM
 - **Print Queue Card with Clear Queue Button**: Added a dedicated Print Queue Card in the main UI displaying real-time queue count (`Queue: Empty` or `Queue: X job(s) waiting`) and a `Clear Queue` button. Un-printed jobs waiting during paper changes or hardware disconnects can now be purged instantly.
 - **`JobQueueManager` Integration**: Built a thread-safe sequential job queue manager that processes local and network jobs sequentially and updates queue state in real-time.
