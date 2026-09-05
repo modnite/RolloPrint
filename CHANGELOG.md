@@ -4,6 +4,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.9.2` — September 4, 2026 at 11:30 AM
+- **Dialog Button Layout Alignment**: Equalized button widths (`layout_weight="1"`) in the Queue Manager modal (`dialog_queue_manager.xml`). Eliminates vertical pill button deformation on the "Done" button.
+- **Card Title Ellipses Truncation Fix**: Optimized horizontal padding and title width in `cardQueue` (`activity_main.xml`), ensuring the card title "Print queue" remains fully visible on all screen sizes without truncating (`Print qu...`).
+- **Collapsible Settings Order & Expansion Fix**: Moved "App theme" to Section 1 at the top of the Settings popup and wrapped its `RadioGroup` container in a `LinearLayout` for smooth expand/collapse tap animations.
+- **Material 3 Button Hierarchy Standardization**: Standardized button styles across the app (Filled buttons for primary actions, Outlined buttons for secondary actions) to eliminate floating text-only buttons and maintain strict visual design consistency.
+
 ### `v1.9.1` — September 4, 2026 at 11:00 AM
 - **Privacy Hardening**: Removed hardcoded private network IP default from Etherpad Pastebin URL settings field. The field now defaults to empty (`http://example.com:9001/p/notepad` hint) and prompts the user to configure their custom pastebin endpoint.
 - **Etherpad Multipart Form Import**: Standardized log dumping via multipart form-data file upload (`/p/<padID>/import`) for 100% reliable log exports across all Etherpad instances.
@@ -47,6 +53,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v1.9.2` — September 4, 2026 at 11:30 AM
+- **Dialog Button Layout Alignment**: Equalized button widths (`layout_weight="1"`) in the Queue Manager modal (`dialog_queue_manager.xml`). Eliminates vertical pill button deformation on the "Done" button.
+- **Card Title Ellipses Truncation Fix**: Optimized horizontal padding and title width in `cardQueue` (`activity_main.xml`), ensuring the card title "Print queue" remains fully visible on all screen sizes without truncating (`Print qu...`).
+- **Collapsible Settings Order & Expansion Fix**: Moved "App theme" to Section 1 at the top of the Settings popup and wrapped its `RadioGroup` container in a `LinearLayout` for smooth expand/collapse tap animations.
+- **Material 3 Button Hierarchy Standardization**: Standardized button styles across the app (Filled buttons for primary actions, Outlined buttons for secondary actions) to eliminate floating text-only buttons and maintain strict visual design consistency.
 
 ### `v1.9.1` — September 4, 2026 at 11:00 AM
 - **Privacy Hardening**: Removed hardcoded private network IP default from Etherpad Pastebin URL settings field. The field now defaults to empty (`http://example.com:9001/p/notepad` hint) and prompts the user to configure their custom pastebin endpoint.
