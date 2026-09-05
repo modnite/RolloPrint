@@ -4,6 +4,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.8.0` — September 4, 2026 at 7:00 AM
+- **Collapsible Settings Menu Sections**: Organized the Settings popup into 3 expandable/collapsible sections (*Print Preview Options*, *Pastebin / Etherpad Settings*, and *Diagnostics & Maintenance*).
+- **Spacious Queue Manager Modal**: Expanded the Print Queue Manager dialog window to `92%` screen width (`360dp` RecyclerView height) for an open, un-claustrophobic management experience.
+
 ### `v1.7.3` — September 4, 2026 at 6:00 AM
 - **Settings Dialog Vertical ScrollView**: Wrapped the entire Settings menu layout in a vertical `ScrollView`. Resolves dialog content clipping on smaller screens and ensures all buttons, text fields, and switches remain fully scrollable and accessible.
 
@@ -25,6 +29,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v1.8.0` — September 4, 2026 at 7:00 AM
+- **Collapsible Settings Menu Sections**: Organized the Settings popup into 3 expandable/collapsible sections (*Print Preview Options*, *Pastebin / Etherpad Settings*, and *Diagnostics & Maintenance*).
+- **Spacious Queue Manager Modal**: Expanded the Print Queue Manager dialog window to `92%` screen width (`360dp` RecyclerView height) for an open, un-claustrophobic management experience.
 
 ### `v1.7.3` — September 4, 2026 at 6:00 AM
 - **Settings Dialog Vertical ScrollView**: Wrapped the entire Settings menu layout in a vertical `ScrollView`. Resolves dialog content clipping on smaller screens and ensures all buttons, text fields, and switches remain fully scrollable and accessible.

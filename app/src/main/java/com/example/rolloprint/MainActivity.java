@@ -277,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.7.3";
+        String appVersion = "1.8.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -319,6 +319,22 @@ public class MainActivity extends AppCompatActivity {
         TextInputEditText etEtherpadApiKey = dialogView.findViewById(R.id.etEtherpadApiKey);
         Button btnDiagnostics = dialogView.findViewById(R.id.btnDiagnostics);
         Button btnCheckUpdates = dialogView.findViewById(R.id.btnCheckUpdates);
+
+        View headerPreviewOptions = dialogView.findViewById(R.id.headerPreviewOptions);
+        View containerPreviewOptions = dialogView.findViewById(R.id.containerPreviewOptions);
+        ImageView ivArrowPreview = dialogView.findViewById(R.id.ivArrowPreview);
+
+        View headerEtherpad = dialogView.findViewById(R.id.headerEtherpad);
+        View containerEtherpad = dialogView.findViewById(R.id.containerEtherpad);
+        ImageView ivArrowEtherpad = dialogView.findViewById(R.id.ivArrowEtherpad);
+
+        View headerDiagnostics = dialogView.findViewById(R.id.headerDiagnostics);
+        View containerDiagnostics = dialogView.findViewById(R.id.containerDiagnostics);
+        ImageView ivArrowDiagnostics = dialogView.findViewById(R.id.ivArrowDiagnostics);
+
+        setupCollapsibleSection(headerPreviewOptions, containerPreviewOptions, ivArrowPreview);
+        setupCollapsibleSection(headerEtherpad, containerEtherpad, ivArrowEtherpad);
+        setupCollapsibleSection(headerDiagnostics, containerDiagnostics, ivArrowDiagnostics);
 
         boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
         boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
@@ -375,6 +391,20 @@ public class MainActivity extends AppCompatActivity {
                     }
                 })
                 .show();
+    }
+
+    private void setupCollapsibleSection(View header, View container, ImageView arrow) {
+        if (header != null && container != null && arrow != null) {
+            header.setOnClickListener(v -> {
+                if (container.getVisibility() == View.VISIBLE) {
+                    container.setVisibility(View.GONE);
+                    arrow.animate().rotation(0f).setDuration(200).start();
+                } else {
+                    container.setVisibility(View.VISIBLE);
+                    arrow.animate().rotation(180f).setDuration(200).start();
+                }
+            });
+        }
     }
 
     private void showUpdateAvailableDialog(String latestTag, String releaseNotes, String apkUrl) {

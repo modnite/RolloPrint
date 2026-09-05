@@ -68,6 +68,14 @@ class QueueManagerDialogFragment : DialogFragment() {
         btnCloseQueue.setOnClickListener { dismiss() }
     }
 
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.apply {
+            val width = (resources.displayMetrics.widthPixels * 0.92).toInt()
+            setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+    }
+
     private class QueueAdapter(
         private val jobs: List<JobQueueManager.PrintJob>,
         private val onPreview: (JobQueueManager.PrintJob) -> Unit,
