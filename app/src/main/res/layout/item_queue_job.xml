@@ -43,39 +43,41 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnItemPreview"
-                style="@style/Widget.Material3.Button.TextButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:insetLeft="0dp"
                 android:insetRight="0dp"
-                android:paddingHorizontal="4dp"
-                android:textSize="13sp"
-                android:text="Preview" />
+                android:paddingHorizontal="2dp"
+                android:textSize="12sp"
+                android:layout_marginEnd="4dp"
+                android:text="@string/preview" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnItemPrint"
-                style="@style/Widget.Material3.Button.TextButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:insetLeft="0dp"
                 android:insetRight="0dp"
-                android:paddingHorizontal="4dp"
-                android:textSize="13sp"
-                android:text="Print Now" />
+                android:paddingHorizontal="2dp"
+                android:textSize="12sp"
+                android:layout_marginEnd="4dp"
+                android:text="@string/print_now" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnItemDelete"
-                style="@style/Widget.Material3.Button.TextButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:insetLeft="0dp"
                 android:insetRight="0dp"
-                android:paddingHorizontal="4dp"
-                android:textSize="13sp"
-                android:text="Delete"
+                android:paddingHorizontal="2dp"
+                android:textSize="12sp"
+                android:text="@string/delete"
                 android:textColor="?attr/colorError" />
         </LinearLayout>
 

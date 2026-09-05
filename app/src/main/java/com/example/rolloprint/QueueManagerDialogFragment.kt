@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -34,7 +35,7 @@ class QueueManagerDialogFragment : DialogFragment() {
 
         val rvQueueJobs = view.findViewById<RecyclerView>(R.id.rvQueueJobs)
         val tvEmptyQueuePlaceholder = view.findViewById<TextView>(R.id.tvEmptyQueuePlaceholder)
-        val btnToggleSortOrder = view.findViewById<MaterialButton>(R.id.btnToggleSortOrder)
+        val btnToggleSortOrder = view.findViewById<ImageButton>(R.id.btnToggleSortOrder)
         val btnPrintAllQueue = view.findViewById<MaterialButton>(R.id.btnPrintAllQueue)
         val btnClearAllQueue = view.findViewById<MaterialButton>(R.id.btnClearAllQueue)
         val btnCloseQueue = view.findViewById<MaterialButton>(R.id.btnCloseQueue)
@@ -78,7 +79,6 @@ class QueueManagerDialogFragment : DialogFragment() {
 
         btnToggleSortOrder?.setOnClickListener {
             isOldestFirst = !isOldestFirst
-            btnToggleSortOrder.text = if (isOldestFirst) getString(R.string.sort_oldest_first) else getString(R.string.sort_newest_first)
             refreshAdapter(jobQueueManager?.getQueuedJobs() ?: emptyList())
         }
 
