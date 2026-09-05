@@ -184,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.3.4";
+        String appVersion = "1.3.5";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -248,6 +248,10 @@ public class MainActivity extends AppCompatActivity {
                             }
                             isUpdatingSwitchProgrammatically = false;
                         });
+                        return null;
+                    },
+                    bitmap -> {
+                        runOnUiThread(() -> showPrintPreview(bitmap));
                         return null;
                     }
             );

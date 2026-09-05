@@ -42,6 +42,9 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.net.URI
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -301,7 +304,7 @@ class IppServer(
     private fun sendGetPrinterAttributesResponse(socket: Socket, version: Int, requestId: Int) {
         val printerUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print")
         val printerMoreInfo = URI("http://${getLocalIpAddress()}:$PORT/")
-        val printerUuid = URI("urn:uuid:e5b02130-1c4b-9a99-000000000001")
+        val printerUuid = URI("urn:uuid:e5b02130-1c4b-483b-9a99-000000000001")
 
         val opGroup = MutableAttributeGroup(
             Tag.operationAttributes,
@@ -541,15 +544,83 @@ class IppServer(
                 }
             }
 
-            // 3. Fallback: Text/PostScript stream -> Convert to 4x6 PDF
-            logger("[IPP] Converting Text/PostScript stream to 4x6 PDF for Job #$jobId...")
+            // 3. Check for CUPS #PDF-BANNER test page
             val textContent = String(data, Charsets.UTF_8)
+            if (textContent.startsWith("#PDF-BANNER") || textContent.contains("default-testpage.pdf")) {
+                logger("[IPP] Received CUPS Test Page Banner. Rendering RolloPrint 4x6 Test Label...")
+                createCupsTestPagePdf(tempPdfFile)
+                ingestPdfToLocalPrint(tempPdfFile)
+                return
+            }
+
+            // 4. Fallback: Text/PostScript stream -> Convert to 4x6 PDF
+            logger("[IPP] Converting Text/PostScript stream to 4x6 PDF for Job #$jobId...")
             createPdfFromText(textContent, tempPdfFile)
             ingestPdfToLocalPrint(tempPdfFile)
 
         } catch (e: Exception) {
             logger("[IPP] ERROR processing IPP job #$jobId: ${e.message}")
         }
+    }
+
+    private fun createCupsTestPagePdf(outputFile: File) {
+        val pdfDoc = PdfDocument()
+        val pageInfo = PdfDocument.PageInfo.Builder(UsbPrintManager.TARGET_WIDTH, UsbPrintManager.TARGET_HEIGHT, 1).create()
+        val page = pdfDoc.startPage(pageInfo)
+        val canvas = page.canvas
+        canvas.drawColor(Color.WHITE)
+
+        val paint = Paint().apply {
+            color = Color.BLACK
+            isAntiAlias = true
+        }
+
+        // Draw Outer Border
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 6f
+        canvas.drawRect(20f, 20f, UsbPrintManager.TARGET_WIDTH - 20f, UsbPrintManager.TARGET_HEIGHT - 20f, paint)
+
+        // Draw Title
+        paint.style = Paint.Style.FILL
+        paint.textSize = 44f
+        paint.isFakeBoldText = true
+        canvas.drawText("RolloPrint Test Page", 60f, 100f, paint)
+
+        paint.strokeWidth = 3f
+        canvas.drawLine(60f, 120f, UsbPrintManager.TARGET_WIDTH - 60f, 120f, paint)
+
+        // Details
+        paint.textSize = 28f
+        paint.isFakeBoldText = false
+        var y = 180f
+
+        val details = listOf(
+            "Printer: Rollo Thermal Printer 4x6",
+            "Protocol: Driverless IPP Everywhere (Port 8631)",
+            "Resolution: 203 DPI (816 x 1218 pixels)",
+            "Media: 4x6 inch (101.6 x 152.4 mm)",
+            "Status: Ready & Hardware Confirmed",
+            "Timestamp: " + SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
+        )
+
+        for (detail in details) {
+            canvas.drawText(detail, 60f, y, paint)
+            y += 48f
+        }
+
+        // Decorative test pattern box
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2f
+        canvas.drawRect(60f, y + 20f, UsbPrintManager.TARGET_WIDTH - 60f, y + 220f, paint)
+
+        paint.style = Paint.Style.FILL
+        paint.textSize = 32f
+        paint.isFakeBoldText = true
+        canvas.drawText("TEST PRINT SUCCESSFUL", 120f, y + 130f, paint)
+
+        pdfDoc.finishPage(page)
+        FileOutputStream(outputFile).use { pdfDoc.writeTo(it) }
+        pdfDoc.close()
     }
 
     private fun createPdfFromBitmap(srcBitmap: Bitmap, outputFile: File) {

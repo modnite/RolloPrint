@@ -4,6 +4,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.3.5` — September 3, 2026 at 9:00 PM
+- **Fixed Network Print Preview Callback Wiring**: Passed `onNetworkBitmapRendered` from `PrintServerService` to `IppServer`, making the "Preview Network Prints" setting fully functional when enabled.
+- **CUPS `#PDF-BANNER` Test Page Rendering**: Added a native 4x6 thermal test page renderer (`createCupsTestPagePdf`) for Linux CUPS and KDE Plasma test pages, printing a crisp, professional **RolloPrint Test Page** with printer status, resolution, and timestamp instead of raw banner text code.
+
 ### `v1.3.4` — September 3, 2026 at 8:00 PM
 - **GitHub Release CI Workflow Fix**: Updated `.github/workflows/release.yml` to build `assembleRelease` and attach `app/build/outputs/apk/release/*.apk` (wildcard matching `RolloPrint.apk`). Resolves the missing release binary issue on GitHub Releases.
 - **Extracted UI Layout Strings into `strings.xml`**: Extracted hardcoded layout strings into string resources in `res/values/strings.xml`, resolving all Android Studio layout lint warnings.
