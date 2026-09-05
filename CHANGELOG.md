@@ -4,6 +4,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.3.1` — September 3, 2026 at 6:00 PM
+- **New App Icon**: Updated app launcher icon across all pixel densities using custom Rollo Thermal Printer artwork.
+- **Settings Cog Wheel Dialog**: Added a Cog Wheel button in the UI header opening a dedicated Print Settings dialog with toggles for both "Preview Local Prints" (`PREF_LOCAL_PREVIEW`, default `true`) and "Preview Network Prints" (`PREF_NETWORK_PREVIEW`, default `false`).
+- **UI Header App Title & Version Display**: Added a prominent header displaying "Rollo Print" and app version name (`v1.3.1`) directly in the main layout.
+- **Compact Activity Log Box**: Reduced the activity log card height to `180dp` with smooth scrolling.
+
 ### `v1.3.0` — September 3, 2026 at 5:00 PM
 - **Direct Network Print (No Dialogs)**: Incoming IPP print jobs bypass all UI preview dialogs, converting to 4x6 203 DPI bitmaps and streaming directly to the USB bulk endpoint in the background with activity logging.
 - **Show Preview for Local Prints Settings Switch**: Added a MaterialSwitch in the main UI (`Show Preview for Local Prints`, persisted in `SharedPreferences`, default `true`). Controls whether local PDF prints prompt for confirmation before sending to USB.

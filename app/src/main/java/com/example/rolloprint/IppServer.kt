@@ -49,7 +49,8 @@ class IppServer(
     private val context: Context,
     private val printManager: UsbPrintManager,
     private val logger: (String) -> Unit,
-    private val onStatusChanged: (Boolean, String?) -> Unit
+    private val onStatusChanged: (Boolean, String?) -> Unit,
+    private val onNetworkBitmapRendered: ((Bitmap) -> Unit)? = null
 ) {
     private var serverSocket: ServerSocket? = null
     @Volatile
@@ -610,8 +611,16 @@ class IppServer(
         val uri = Uri.fromFile(pdfFile)
         val bitmap = printManager.renderPdfToBitmap(uri)
         if (bitmap != null) {
-            logger("[IPP] PDF converted to 816x1218 bitmap. Streaming directly to Rollo printer...")
-            printManager.printBitmapAsync(bitmap)
+            val prefs = context.getSharedPreferences("rollo_prefs", Context.MODE_PRIVATE)
+            val showNetworkPreview = prefs.getBoolean("PREF_NETWORK_PREVIEW", false)
+
+            if (showNetworkPreview && onNetworkBitmapRendered != null) {
+                logger("[IPP] Displaying Print Preview Dialog for Network Job...")
+                onNetworkBitmapRendered.invoke(bitmap)
+            } else {
+                logger("[IPP] PDF converted to 816x1218 bitmap. Streaming directly to Rollo printer...")
+                printManager.printBitmapAsync(bitmap)
+            }
         } else {
             logger("[IPP] ERROR: Local PDF rendering engine failed.")
         }

@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -28,6 +29,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 
 import java.text.SimpleDateFormat;
@@ -43,8 +45,8 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap lastRenderedBitmap;
 
     private MaterialSwitch switchServer;
-    private MaterialSwitch switchLocalPreview;
     private TextView tvServerStatus;
+    private TextView tvHeaderVersion;
     private PrintServerService printServerService;
     private SharedPreferences prefs;
     private boolean isServiceBound = false;
@@ -120,16 +122,11 @@ public class MainActivity extends AppCompatActivity {
         scrollView = findViewById(R.id.scrollView);
         Button btnSelect = findViewById(R.id.btnSelect);
         switchServer = findViewById(R.id.switchServer);
-        switchLocalPreview = findViewById(R.id.switchLocalPreview);
         tvServerStatus = findViewById(R.id.tvServerStatus);
+        tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
 
-        boolean showLocalPreview = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
-        switchLocalPreview.setChecked(showLocalPreview);
-
-        switchLocalPreview.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            prefs.edit().putBoolean("PREF_LOCAL_PREVIEW", isChecked).apply();
-            log("[SETTINGS] Show Preview for Local Prints set to: " + isChecked);
-        });
+        ImageButton btnSettings = findViewById(R.id.btnSettings);
+        btnSettings.setOnClickListener(v -> showSettingsDialog());
 
         printManager = new UsbPrintManager(this, text -> {
             log(text);
@@ -173,12 +170,14 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.3.0";
+        String appVersion = "1.3.1";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
 
-        log("Rollo X1038 Utility v" + appVersion + " Loaded.");
+        tvHeaderVersion.setText("v" + appVersion);
+
+        log("Rollo Print v" + appVersion + " Loaded.");
         log("Ready to print 4x6 PDF labels.");
 
         // Proactively request all runtime permissions on first open
@@ -186,6 +185,33 @@ public class MainActivity extends AppCompatActivity {
 
         // Check if app was launched via Share / Open PDF intent
         handleIncomingIntent(getIntent());
+    }
+
+    private void showSettingsDialog() {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_settings, null);
+        MaterialSwitch switchLocal = dialogView.findViewById(R.id.switchLocalPreviewDialog);
+        MaterialSwitch switchNetwork = dialogView.findViewById(R.id.switchNetworkPreviewDialog);
+
+        boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
+        boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
+
+        switchLocal.setChecked(showLocal);
+        switchNetwork.setChecked(showNetwork);
+
+        switchLocal.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("PREF_LOCAL_PREVIEW", isChecked).apply();
+            log("[SETTINGS] Preview Local Prints set to: " + isChecked);
+        });
+
+        switchNetwork.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("PREF_NETWORK_PREVIEW", isChecked).apply();
+            log("[SETTINGS] Preview Network Prints set to: " + isChecked);
+        });
+
+        new MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .setPositiveButton("Done", null)
+                .show();
     }
 
     private void startIppServer() {
