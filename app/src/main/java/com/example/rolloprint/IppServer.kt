@@ -10,17 +10,31 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import com.hp.jipp.encoding.IppInputStream
+import com.hp.jipp.encoding.IppOutputStream
+import com.hp.jipp.encoding.IppPacket
+import com.hp.jipp.encoding.MutableAttributeGroup
+import com.hp.jipp.encoding.Resolution
+import com.hp.jipp.encoding.ResolutionUnit
+import com.hp.jipp.encoding.Tag
+import com.hp.jipp.model.JobState
+import com.hp.jipp.model.Operation
+import com.hp.jipp.model.PrinterState
+import com.hp.jipp.model.PrinterStateReason
+import com.hp.jipp.model.Status
+import com.hp.jipp.model.Types
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
-import java.io.OutputStream
 import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketTimeoutException
+import java.net.URI
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -88,13 +102,13 @@ class IppServer(
         val clientIp = socket.inetAddress?.hostAddress ?: "Unknown"
         Executors.newSingleThreadExecutor().execute {
             try {
-                socket.soTimeout = 3000
+                socket.soTimeout = 5000
                 val input = socket.getInputStream()
                 val baos = ByteArrayOutputStream()
                 val buffer = ByteArray(4096)
                 var bytesRead: Int
 
-                // Read HTTP Headers
+                // 1. Read HTTP Request Headers
                 var headerEnd = -1
                 while (isRunning) {
                     bytesRead = input.read(buffer)
@@ -114,10 +128,16 @@ class IppServer(
                 val headerBytes = allData.copyOfRange(0, headerEnd)
                 val headerStr = String(headerBytes, Charsets.US_ASCII)
 
-                // Parse Content-Length if present
+                // Handle Expect: 100-continue if sent by client
+                if (headerStr.contains("Expect: 100-continue", ignoreCase = true)) {
+                    val continueResponse = "HTTP/1.1 100 Continue\r\n\r\n".toByteArray(Charsets.US_ASCII)
+                    socket.getOutputStream().write(continueResponse)
+                    socket.getOutputStream().flush()
+                }
+
                 val contentLength = parseContentLength(headerStr)
 
-                // Read remaining HTTP body if needed
+                // 2. Read HTTP Body
                 val bodyBaos = ByteArrayOutputStream()
                 val initialBodyBytes = allData.copyOfRange(headerEnd, allData.size)
                 bodyBaos.write(initialBodyBytes)
@@ -128,16 +148,56 @@ class IppServer(
                     bodyBaos.write(buffer, 0, bytesRead)
                 }
 
-                val ippData = bodyBaos.toByteArray()
-
-                if (ippData.size < 8) {
+                val bodyData = bodyBaos.toByteArray()
+                if (bodyData.isEmpty()) {
                     sendHttpResponse(socket, 400, "Bad Request")
                     socket.close()
                     return@execute
                 }
 
-                // Process IPP Frame
-                processIppRequest(socket, ippData, clientIp)
+                // 3. Parse IPP Request Packet using HP jipp-core
+                val ippInputStream = IppInputStream(ByteArrayInputStream(bodyData))
+                val ippRequestPacket = ippInputStream.readPacket()
+
+                val operation = ippRequestPacket.operation
+                val requestId = ippRequestPacket.requestId
+
+                when (operation) {
+                    Operation.getPrinterAttributes -> {
+                        logger("[IPP] Get-Printer-Attributes request from $clientIp")
+                        sendGetPrinterAttributesResponse(socket, requestId)
+                    }
+                    Operation.validateJob -> {
+                        logger("[IPP] Validate-Job request from $clientIp")
+                        sendSimpleIppResponse(socket, requestId, Status.successfulOk)
+                    }
+                    Operation.printJob, Operation.sendDocument -> {
+                        val jobId = jobIdCounter.getAndIncrement()
+                        logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes) from $clientIp")
+
+                        sendPrintJobResponse(socket, requestId, jobId)
+
+                        // Document payload follows the IPP packet
+                        val docStart = findByteSequence(bodyData, "%PDF-".toByteArray())
+                        val docData = if (docStart != -1) {
+                            bodyData.copyOfRange(docStart, bodyData.size)
+                        } else {
+                            bodyData
+                        }
+
+                        if (docData.isNotEmpty()) {
+                            processIncomingDocumentPayload(docData, jobId)
+                        }
+                    }
+                    Operation.getJobAttributes -> {
+                        logger("[IPP] Get-Job-Attributes request from $clientIp")
+                        sendGetJobAttributesResponse(socket, requestId)
+                    }
+                    else -> {
+                        logger("[IPP] Operation $operation requested from $clientIp")
+                        sendSimpleIppResponse(socket, requestId, Status.successfulOk)
+                    }
+                }
 
                 try {
                     socket.close()
@@ -168,157 +228,131 @@ class IppServer(
         return 0
     }
 
-    private fun processIppRequest(socket: Socket, ippData: ByteArray, clientIp: String) {
-        val opId = ((ippData[2].toInt() and 0xFF) shl 8) or (ippData[3].toInt() and 0xFF)
-        val requestId = ippData.copyOfRange(4, 8)
+    private fun sendGetPrinterAttributesResponse(socket: Socket, requestId: Int) {
+        val printerUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print")
 
-        when (opId) {
-            0x000B -> { // Get-Printer-Attributes
-                logger("[IPP] Get-Printer-Attributes request from $clientIp")
-                sendIppPrinterAttributesResponse(socket, requestId)
-            }
-            0x000A -> { // Validate-Job
-                logger("[IPP] Validate-Job request from $clientIp")
-                sendIppSimpleResponse(socket, requestId, 0x0000)
-            }
-            0x0002, 0x0006 -> { // Print-Job (0x0002) or Send-Document (0x0006)
-                val jobId = jobIdCounter.getAndIncrement()
-                logger("[IPP] Print-Job #$jobId received (${ippData.size} bytes) from $clientIp")
-                
-                // Extract document binary payload (following End-Of-Attributes Tag 0x03)
-                val docStart = findEndOfAttributesTag(ippData)
-                val docData = if (docStart != -1 && docStart < ippData.size) {
-                    ippData.copyOfRange(docStart, ippData.size)
-                } else {
-                    ippData
-                }
+        val opGroup = MutableAttributeGroup(
+            Tag.operationAttributes,
+            listOf(
+                Types.attributesCharset.of("utf-8"),
+                Types.attributesNaturalLanguage.of("en")
+            )
+        )
 
-                sendIppPrintJobResponse(socket, requestId, jobId)
+        val printerGroup = MutableAttributeGroup(
+            Tag.printerAttributes,
+            listOf(
+                Types.charsetConfigured.of("utf-8"),
+                Types.charsetSupported.of("utf-8"),
+                Types.naturalLanguageConfigured.of("en"),
+                Types.generatedNaturalLanguageSupported.of("en"),
+                Types.printerState.of(PrinterState.idle),
+                Types.printerStateReasons.of(PrinterStateReason.none),
+                Types.printerIsAcceptingJobs.of(true),
+                Types.queuedJobCount.of(0),
+                Types.ippVersionsSupported.of("1.1", "2.0"),
+                Types.operationsSupported.of(
+                    Operation.printJob,
+                    Operation.validateJob,
+                    Operation.getJobAttributes,
+                    Operation.getPrinterAttributes
+                ),
+                Types.documentFormatSupported.of("application/pdf", "image/png", "image/jpeg", "application/octet-stream"),
+                Types.documentFormatDefault.of("application/pdf"),
+                Types.mediaSupported.of("oe_4x6-label_4x6in", "na_index-4x6_4x6in", "custom_min_4x6in"),
+                Types.mediaDefault.of("oe_4x6-label_4x6in"),
+                Types.mediaReady.of("oe_4x6-label_4x6in"),
+                Types.printerResolutionSupported.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
+                Types.printerResolutionDefault.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
+                Types.printerName.of("Rollo Printer"),
+                Types.printerInfo.of("Rollo Thermal Printer 4x6"),
+                Types.printerLocation.of("Local Network"),
+                Types.printerMakeAndModel.of("Rollo Thermal Printer 4x6"),
+                Types.printerUriSupported.of(printerUri),
+                Types.uriAuthenticationSupported.of("none"),
+                Types.uriSecuritySupported.of("none"),
+                Types.pdlOverrideSupported.of("not-attempted"),
+                Types.colorSupported.of(false),
+                Types.pagesPerMinute.of(60),
+                Types.printerUpTime.of((System.currentTimeMillis() / 1000).toInt())
+            )
+        )
 
-                // Convert payload to PDF and dispatch to TSPL rasterizer
-                if (docData.isNotEmpty()) {
-                    processIncomingDocumentPayload(docData, jobId)
-                }
-            }
-            0x0009 -> { // Get-Job-Attributes
-                logger("[IPP] Get-Job-Attributes request from $clientIp")
-                sendIppJobAttributesResponse(socket, requestId)
-            }
-            else -> {
-                logger("[IPP] Operation 0x${opId.toString(16)} requested from $clientIp")
-                sendIppSimpleResponse(socket, requestId, 0x0000)
-            }
-        }
+        val responsePacket = IppPacket(Status.successfulOk, requestId, opGroup, printerGroup)
+        sendIppPacketResponse(socket, responsePacket)
     }
 
-    private fun findEndOfAttributesTag(data: ByteArray): Int {
-        for (i in 8 until data.size) {
-            if (data[i] == 0x03.toByte()) { // end-of-attributes-tag
-                return i + 1
-            }
-        }
-        return -1
+    private fun sendPrintJobResponse(socket: Socket, requestId: Int, jobId: Int) {
+        val jobUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print/$jobId")
+
+        val opGroup = MutableAttributeGroup(
+            Tag.operationAttributes,
+            listOf(
+                Types.attributesCharset.of("utf-8"),
+                Types.attributesNaturalLanguage.of("en")
+            )
+        )
+
+        val jobGroup = MutableAttributeGroup(
+            Tag.jobAttributes,
+            listOf(
+                Types.jobId.of(jobId),
+                Types.jobUri.of(jobUri),
+                Types.jobState.of(JobState.completed)
+            )
+        )
+
+        val responsePacket = IppPacket(Status.successfulOk, requestId, opGroup, jobGroup)
+        sendIppPacketResponse(socket, responsePacket)
     }
 
-    private fun sendIppPrinterAttributesResponse(socket: Socket, requestId: ByteArray) {
-        val ippWriter = IppResponseWriter(requestId)
-        ippWriter.startGroup(0x01) // operation-attributes-tag
-        ippWriter.addAttribute(0x47, "attributes-charset", "utf-8")
-        ippWriter.addAttribute(0x48, "attributes-natural-language", "en")
+    private fun sendGetJobAttributesResponse(socket: Socket, requestId: Int) {
+        val opGroup = MutableAttributeGroup(
+            Tag.operationAttributes,
+            listOf(
+                Types.attributesCharset.of("utf-8"),
+                Types.attributesNaturalLanguage.of("en")
+            )
+        )
 
-        ippWriter.startGroup(0x04) // printer-attributes-tag
-        ippWriter.addAttribute(0x47, "charset-configured", "utf-8")
-        ippWriter.addAttribute(0x47, "charset-supported", "utf-8")
-        ippWriter.addAttribute(0x48, "natural-language-configured", "en")
-        ippWriter.addAttribute(0x48, "generated-natural-language-supported", "en")
+        val jobGroup = MutableAttributeGroup(
+            Tag.jobAttributes,
+            listOf(
+                Types.jobState.of(JobState.completed)
+            )
+        )
 
-        ippWriter.addIntAttribute(0x23, "printer-state", 3) // 3 = idle
-        ippWriter.addAttribute(0x44, "printer-state-reasons", "none")
-        ippWriter.addBooleanAttribute("printer-is-accepting-jobs", true)
-        ippWriter.addIntAttribute(0x21, "queued-job-count", 0)
-
-        ippWriter.addAttribute(0x44, "ipp-versions-supported", "1.1")
-        ippWriter.addAdditionalValue(0x44, "2.0")
-
-        ippWriter.addIntAttribute(0x23, "operations-supported", 0x0002) // Print-Job
-        ippWriter.addAdditionalInt(0x23, 0x0004)                        // Validate-Job
-        ippWriter.addAdditionalInt(0x23, 0x0009)                        // Get-Job-Attributes
-        ippWriter.addAdditionalInt(0x23, 0x000B)                        // Get-Printer-Attributes
-
-        ippWriter.addAttribute(0x49, "document-format-supported", "application/pdf")
-        ippWriter.addAdditionalValue(0x49, "image/png")
-        ippWriter.addAdditionalValue(0x49, "image/jpeg")
-        ippWriter.addAdditionalValue(0x49, "application/octet-stream")
-        ippWriter.addAttribute(0x49, "document-format-default", "application/pdf")
-
-        ippWriter.addAttribute(0x44, "media-supported", "oe_4x6-label_4x6in")
-        ippWriter.addAdditionalValue(0x44, "na_index-4x6_4x6in")
-        ippWriter.addAttribute(0x44, "media-default", "oe_4x6-label_4x6in")
-        ippWriter.addAttribute(0x44, "media-ready", "oe_4x6-label_4x6in")
-
-        ippWriter.addResolutionAttribute("printer-resolution-supported", 203, 203)
-        ippWriter.addResolutionAttribute("printer-resolution-default", 203, 203)
-
-        ippWriter.addAttribute(0x42, "printer-name", "Rollo Printer")
-        ippWriter.addAttribute(0x41, "printer-info", "Rollo Thermal Printer 4x6")
-        ippWriter.addAttribute(0x45, "printer-uri-supported", "ipp://${getLocalIpAddress()}:$PORT/ipp/print")
-        ippWriter.addAttribute(0x44, "uri-authentication-supported", "none")
-        ippWriter.addAttribute(0x44, "uri-security-supported", "none")
-        ippWriter.addAttribute(0x44, "pdl-override-supported", "not-attempted")
-        ippWriter.addBooleanAttribute("color-supported", false)
-        ippWriter.addIntAttribute(0x21, "printer-up-time", (System.currentTimeMillis() / 1000).toInt())
-
-        val responseBytes = ippWriter.build()
-        sendIppHttpResponse(socket, responseBytes)
+        val responsePacket = IppPacket(Status.successfulOk, requestId, opGroup, jobGroup)
+        sendIppPacketResponse(socket, responsePacket)
     }
 
-    private fun sendIppPrintJobResponse(socket: Socket, requestId: ByteArray, jobId: Int) {
-        val ippWriter = IppResponseWriter(requestId)
-        ippWriter.startGroup(0x01) // operation-attributes-tag
-        ippWriter.addAttribute(0x47, "attributes-charset", "utf-8")
-        ippWriter.addAttribute(0x48, "attributes-natural-language", "en")
+    private fun sendSimpleIppResponse(socket: Socket, requestId: Int, status: Status) {
+        val opGroup = MutableAttributeGroup(
+            Tag.operationAttributes,
+            listOf(
+                Types.attributesCharset.of("utf-8"),
+                Types.attributesNaturalLanguage.of("en")
+            )
+        )
 
-        ippWriter.startGroup(0x02) // job-attributes-tag
-        ippWriter.addIntAttribute(0x21, "job-id", jobId)
-        ippWriter.addAttribute(0x45, "job-uri", "ipp://${getLocalIpAddress()}:$PORT/ipp/print/$jobId")
-        ippWriter.addIntAttribute(0x23, "job-state", 9) // 9 = completed
-
-        val responseBytes = ippWriter.build()
-        sendIppHttpResponse(socket, responseBytes)
+        val responsePacket = IppPacket(status, requestId, opGroup)
+        sendIppPacketResponse(socket, responsePacket)
     }
 
-    private fun sendIppJobAttributesResponse(socket: Socket, requestId: ByteArray) {
-        val ippWriter = IppResponseWriter(requestId)
-        ippWriter.startGroup(0x01) // operation-attributes-tag
-        ippWriter.addAttribute(0x47, "attributes-charset", "utf-8")
-        ippWriter.addAttribute(0x48, "attributes-natural-language", "en")
-
-        ippWriter.startGroup(0x02) // job-attributes-tag
-        ippWriter.addIntAttribute(0x23, "job-state", 9) // 9 = completed
-
-        val responseBytes = ippWriter.build()
-        sendIppHttpResponse(socket, responseBytes)
-    }
-
-    private fun sendIppSimpleResponse(socket: Socket, requestId: ByteArray, statusCode: Short) {
-        val ippWriter = IppResponseWriter(requestId, statusCode)
-        ippWriter.startGroup(0x01) // operation-attributes-tag
-        ippWriter.addAttribute(0x47, "attributes-charset", "utf-8")
-        ippWriter.addAttribute(0x48, "attributes-natural-language", "en")
-
-        val responseBytes = ippWriter.build()
-        sendIppHttpResponse(socket, responseBytes)
-    }
-
-    private fun sendIppHttpResponse(socket: Socket, ippBytes: ByteArray) {
+    private fun sendIppPacketResponse(socket: Socket, packet: IppPacket) {
         try {
+            val baos = ByteArrayOutputStream()
+            val ippOutputStream = IppOutputStream(baos)
+            ippOutputStream.write(packet)
+            val responseBytes = baos.toByteArray()
+
             val output = socket.getOutputStream()
             val header = "HTTP/1.1 200 OK\r\n" +
                     "Content-Type: application/ipp\r\n" +
-                    "Content-Length: ${ippBytes.size}\r\n" +
+                    "Content-Length: ${responseBytes.size}\r\n" +
                     "Connection: close\r\n\r\n"
             output.write(header.toByteArray(Charsets.US_ASCII))
-            output.write(ippBytes)
+            output.write(responseBytes)
             output.flush()
         } catch (_: Exception) {}
     }
@@ -482,112 +516,5 @@ class IppServer(
             }
         } catch (_: Exception) {}
         return "127.0.0.1"
-    }
-}
-
-// IPP Binary Response Writer Helper Class
-private class IppResponseWriter(private val requestId: ByteArray, private val statusCode: Short = 0x0000) {
-    private val baos = ByteArrayOutputStream()
-
-    init {
-        // IPP Version 2.0 (0x02 0x00)
-        baos.write(byteArrayOf(0x02, 0x00))
-        // Status code successful-ok (0x0000)
-        baos.write((statusCode.toInt() shr 8) and 0xFF)
-        baos.write(statusCode.toInt() and 0xFF)
-        // Request ID (4 bytes)
-        baos.write(requestId)
-    }
-
-    fun startGroup(tag: Byte) {
-        baos.write(tag.toInt())
-    }
-
-    fun addAttribute(valueTag: Byte, name: String, value: String) {
-        val nameBytes = name.toByteArray(Charsets.UTF_8)
-        val valueBytes = value.toByteArray(Charsets.UTF_8)
-
-        baos.write(valueTag.toInt())
-        baos.write((nameBytes.size shr 8) and 0xFF)
-        baos.write(nameBytes.size and 0xFF)
-        baos.write(nameBytes)
-        baos.write((valueBytes.size shr 8) and 0xFF)
-        baos.write(valueBytes.size and 0xFF)
-        baos.write(valueBytes)
-    }
-
-    fun addAdditionalValue(valueTag: Byte, value: String) {
-        val valueBytes = value.toByteArray(Charsets.UTF_8)
-
-        baos.write(valueTag.toInt())
-        baos.write(0) // name-length = 0 for additional values per IPP RFC 8010 Section 3.5!
-        baos.write(0)
-        baos.write((valueBytes.size shr 8) and 0xFF)
-        baos.write(valueBytes.size and 0xFF)
-        baos.write(valueBytes)
-    }
-
-    fun addIntAttribute(valueTag: Byte, name: String, value: Int) {
-        val nameBytes = name.toByteArray(Charsets.UTF_8)
-
-        baos.write(valueTag.toInt())
-        baos.write((nameBytes.size shr 8) and 0xFF)
-        baos.write(nameBytes.size and 0xFF)
-        baos.write(nameBytes)
-        baos.write(0)
-        baos.write(4)
-        baos.write((value shr 24) and 0xFF)
-        baos.write((value shr 16) and 0xFF)
-        baos.write((value shr 8) and 0xFF)
-        baos.write(value and 0xFF)
-    }
-
-    fun addAdditionalInt(valueTag: Byte, value: Int) {
-        baos.write(valueTag.toInt())
-        baos.write(0) // name-length = 0
-        baos.write(0)
-        baos.write(0)
-        baos.write(4)
-        baos.write((value shr 24) and 0xFF)
-        baos.write((value shr 16) and 0xFF)
-        baos.write((value shr 8) and 0xFF)
-        baos.write(value and 0xFF)
-    }
-
-    fun addBooleanAttribute(name: String, value: Boolean) {
-        val nameBytes = name.toByteArray(Charsets.UTF_8)
-
-        baos.write(0x22) // boolean tag
-        baos.write((nameBytes.size shr 8) and 0xFF)
-        baos.write(nameBytes.size and 0xFF)
-        baos.write(nameBytes)
-        baos.write(0)
-        baos.write(1)
-        baos.write(if (value) 1 else 0)
-    }
-
-    fun addResolutionAttribute(name: String, xRes: Int, yRes: Int, units: Byte = 0x03) {
-        val nameBytes = name.toByteArray(Charsets.UTF_8)
-
-        baos.write(0x32) // resolution tag
-        baos.write((nameBytes.size shr 8) and 0xFF)
-        baos.write(nameBytes.size and 0xFF)
-        baos.write(nameBytes)
-        baos.write(0)
-        baos.write(9)
-        baos.write((xRes shr 24) and 0xFF)
-        baos.write((xRes shr 16) and 0xFF)
-        baos.write((xRes shr 8) and 0xFF)
-        baos.write(xRes and 0xFF)
-        baos.write((yRes shr 24) and 0xFF)
-        baos.write((yRes shr 16) and 0xFF)
-        baos.write((yRes shr 8) and 0xFF)
-        baos.write(yRes and 0xFF)
-        baos.write(units.toInt())
-    }
-
-    fun build(): ByteArray {
-        baos.write(0x03) // end-of-attributes-tag
-        return baos.toByteArray()
     }
 }

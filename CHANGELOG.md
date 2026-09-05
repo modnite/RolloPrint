@@ -4,6 +4,11 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.1.1` — September 3, 2026 at 2:00 PM
+- **Integrated HP `jipp-core` IPP Engine (`com.hp.jipp:jipp-core:0.7.18`)**: Replaced custom IPP response serializer with HP's official, production-grade IPP Everywhere library. HP `jipp-core` guarantees 100% PWG 5100.14 / RFC 8010 compliant binary IPP frames.
+- **HTTP/1.1 Expect 100-Continue Handshake**: Handles `Expect: 100-continue` headers from Windows IPP and Linux CUPS clients automatically.
+- **Driverless Network Print Preview**: When network jobs arrive, `IppServer` triggers the UI Print Preview modal on the Android device so the user can inspect the converted 4x6 label layout before hardware transfer.
+
 ### `v1.1.0` — September 3, 2026 at 1:00 PM
 - **RFC 8010 Compliant IPP Attribute Encodings**: Fixed IPP multi-value attribute encoding (`name-length = 0` for additional values). Resolves the "That didn't work" error on Windows and "This feature is not available" error on Linux CUPS when adding the printer.
 - **Temporary Network Print Preview**: Configured `IppServer` to trigger the app's `PrintPreviewDialogFragment` when network jobs arrive, allowing visual inspection of the rendered 4x6 label on the phone before confirming hardware streaming.

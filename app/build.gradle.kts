@@ -10,8 +10,8 @@ android {
         applicationId = "com.example.rolloprint"
         minSdk = 24
         targetSdk = 37
-        versionCode = 21
-        versionName = "1.1.0"
+        versionCode = 22
+        versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -52,8 +52,8 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.constraintlayout)
     implementation(libs.material)
+    implementation("com.hp.jipp:jipp-core:0.7.18")
     testImplementation(libs.junit)
-    // Library removed as we now use the expert native TSPL2 manager
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)
 }
