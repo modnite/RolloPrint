@@ -113,6 +113,8 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         }
 
         val baos = ByteArrayOutputStream()
+        // Prepend TSPL Soft Reset ~@ to flush any previous pending page buffer
+        baos.write(byteArrayOf(0x7E.toByte(), 0x40.toByte(), 0x0D.toByte(), 0x0A.toByte()))
         baos.write("SIZE 102 mm,153 mm\n".toByteArray())
         baos.write("REFERENCE 0,0\n".toByteArray())
         baos.write("DIRECTION 0,0\n".toByteArray())
@@ -170,7 +172,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
                         if (endpointOut != null) {
                             logger("[HARDWARE] Sending TSPL abort & buffer purge (~@, CLS) to Rollo hardware...")
-                            val killCmd = "\r\n~@\r\nCLS\r\n".toByteArray(Charsets.US_ASCII)
+                            val killCmd = byteArrayOf(0x7E.toByte(), 0x40.toByte(), 0x0D.toByte(), 0x0A.toByte()) + "CLS\r\n".toByteArray(Charsets.US_ASCII)
                             connection.bulkTransfer(endpointOut, killCmd, killCmd.size, 1000)
                             logger("[HARDWARE] Rollo internal RAM buffer cleared successfully.")
                         }
@@ -213,21 +215,15 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                         return@execute
                     }
 
-                    logger("[DIAGNOSTIC] Querying status (~!S)...")
-                    val status = queryPrinterStatus(connection, usbInterface)
-                    logger("[DIAGNOSTIC] Status Query ~!S Result: code = $status (0x${if (status >= 0) status.toString(16) else "ERR"})")
+                    val endpointOut = (0 until usbInterface.endpointCount)
+                        .map { usbInterface.getEndpoint(it) }
+                        .find { it.type == UsbConstants.USB_ENDPOINT_XFER_BULK && it.direction == UsbConstants.USB_DIR_OUT }
 
-                    if (status == 0) {
-                        logger("[DIAGNOSTIC] HARDWARE STATUS: READY (Paper loaded, Green LED)")
-                    } else if (status > 0) {
-                        val flags = mutableListOf<String>()
-                        if ((status and 0x01) != 0) flags.add("Head Opened")
-                        if ((status and 0x02) != 0) flags.add("Paper Jam")
-                        if ((status and 0x04) != 0) flags.add("Out of Paper (Red LED)")
-                        if ((status and 0x08) != 0) flags.add("Paused")
-                        logger("[DIAGNOSTIC] HARDWARE STATUS: ERROR/PAUSED -> Flags: ${flags.joinToString(", ")}")
-                    } else {
-                        logger("[DIAGNOSTIC] HARDWARE STATUS: Status query timeout on USB IN endpoint.")
+                    if (endpointOut != null) {
+                        logger("[DIAGNOSTIC] Sending hardware soft reset (~@) to Rollo printer...")
+                        val resetCmd = byteArrayOf(0x7E.toByte(), 0x40.toByte(), 0x0D.toByte(), 0x0A.toByte())
+                        val sent = connection.bulkTransfer(endpointOut, resetCmd, resetCmd.size, 1000)
+                        logger("[DIAGNOSTIC] Hardware reset result: $sent bytes sent.")
                     }
 
                     connection.releaseInterface(usbInterface)
@@ -237,47 +233,6 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             } catch (e: Exception) {
                 logger("[DIAGNOSTIC] Exception during status check: ${e.message}")
             }
-        }
-    }
-
-    private fun queryPrinterStatus(connection: UsbDeviceConnection, usbInterface: UsbInterface): Int {
-        try {
-            val endpointOut = (0 until usbInterface.endpointCount)
-                .map { usbInterface.getEndpoint(it) }
-                .find { it.type == UsbConstants.USB_ENDPOINT_XFER_BULK && it.direction == UsbConstants.USB_DIR_OUT }
-
-            val endpointIn = (0 until usbInterface.endpointCount)
-                .map { usbInterface.getEndpoint(it) }
-                .find { it.type == UsbConstants.USB_ENDPOINT_XFER_BULK && it.direction == UsbConstants.USB_DIR_IN }
-
-            if (endpointOut == null || endpointIn == null) {
-                logger("[DIAGNOSTIC] Endpoint OUT or IN mismatch.")
-                return -1
-            }
-
-            val statusQueryCmd = "\r\n~!S\r\n".toByteArray(Charsets.US_ASCII)
-            val sent = connection.bulkTransfer(endpointOut, statusQueryCmd, statusQueryCmd.size, 1000)
-            if (sent <= 0) {
-                logger("[DIAGNOSTIC] Bulk transfer OUT (~!S) failed.")
-                return -1
-            }
-
-            // Retry read up to 3 times to account for USB hub buffering
-            val response = ByteArray(1)
-            for (attempt in 1..3) {
-                val read = connection.bulkTransfer(endpointIn, response, response.size, 800)
-                if (read > 0) {
-                    val statusByte = response[0].toInt() and 0xFF
-                    logger("[DIAGNOSTIC] Bulk transfer IN received $read byte(s): 0x${statusByte.toString(16)}")
-                    return statusByte
-                }
-                Thread.sleep(50)
-            }
-            logger("[DIAGNOSTIC] Bulk transfer IN timed out after 3 attempts.")
-            return -1
-        } catch (e: Exception) {
-            logger("[DIAGNOSTIC] queryPrinterStatus Exception: ${e.message}")
-            return -1
         }
     }
 
@@ -305,18 +260,6 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             if (!connection.claimInterface(usbInterface, true)) {
                 logger("ERROR: Interface Busy.")
                 return false
-            }
-
-            // Check hardware paper status BEFORE sending bitmap bytes!
-            val status = queryPrinterStatus(connection, usbInterface)
-            if (status != -1 && status != 0) {
-                if ((status and 0x04) != 0 || (status and 0x02) != 0) {
-                    logger("[HARDWARE] Out of Paper detected (Red LED flashing). Job held in queue.")
-                } else {
-                    logger("[HARDWARE] Printer error/paused (0x${status.toString(16)}). Job held in queue.")
-                }
-                connection.releaseInterface(usbInterface)
-                return false // Hold job in memory queue; do not stream bytes to hardware RAM!
             }
 
             val endpoint = (0 until usbInterface.endpointCount)

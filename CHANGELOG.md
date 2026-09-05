@@ -4,6 +4,9 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.4.4` — September 3, 2026 at 11:59 PM
+- **Pre-Payload Hardware Soft Reset (`~@`)**: Prepended TSPL soft reset byte sequence (`byteArrayOf(0x7E, 0x40, 0x0D, 0x0A)`) directly to the head of every TSPL bitmap payload. When thermal paper is loaded, `~@` instantly flushes any unexecuted page commands previously sitting in the Rollo printer's internal RAM.
+
 ### `v1.4.3` — September 3, 2026 at 11:30 PM
 - **Pre-Transfer Out-of-Paper Hardware Guard (`~!S`)**: Added real-time TSPL status checks (`~!S`) in `UsbPrintManager` before USB bulk streaming. If paper is not loaded (Red LED flashing), `UsbPrintManager` halts transfer before any bytes enter printer RAM, holding the job safely in `JobQueueManager` memory.
 - **Hardware Status Check Diagnostic Tool**: Added "Run Hardware Status Check" button in the Settings menu to test USB endpoint status reads and print real-time hardware status flags into the Activity Log.
