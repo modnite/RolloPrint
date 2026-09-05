@@ -78,6 +78,19 @@ class JobQueueManager(
         }
     }
 
+    fun printAllJobs() {
+        synchronized(this) {
+            queue.forEach { job ->
+                if (job.status == JobStatus.HELD || job.status == JobStatus.FAILED) {
+                    job.status = JobStatus.PENDING
+                }
+            }
+            logger("[QUEUE] User triggered 'Print all' for ${queue.size} queued job(s)...")
+            notifyQueueChanged()
+            processNextJob()
+        }
+    }
+
     fun printJobManual(jobId: Int) {
         synchronized(this) {
             val job = queue.find { it.id == jobId }

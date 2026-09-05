@@ -6,14 +6,29 @@
     android:padding="24dp"
     android:background="?attr/colorSurface">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Print Queue Manager"
-        android:textAppearance="?attr/textAppearanceTitleLarge"
-        android:textColor="?attr/colorOnSurface"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/print_queue_title"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnToggleSortOrder"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sort_oldest_first" />
+    </LinearLayout>
 
     <!-- Empty Queue Placeholder -->
     <TextView
@@ -21,7 +36,7 @@
         android:layout_width="match_parent"
         android:layout_height="160dp"
         android:gravity="center"
-        android:text="No pending jobs in print queue"
+        android:text="@string/no_pending_jobs"
         android:textAppearance="?attr/textAppearanceBodyLarge"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:visibility="gone" />
@@ -43,12 +58,20 @@
         android:layout_marginTop="20dp">
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPrintAllQueue"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/print_all"
+            android:layout_marginEnd="8dp" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnClearAllQueue"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Clear All"
-            android:layout_marginEnd="12dp" />
+            android:text="@string/clear_all"
+            android:layout_marginEnd="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCloseQueue"

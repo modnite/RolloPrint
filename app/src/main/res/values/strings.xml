@@ -24,6 +24,7 @@
     <string name="etherpad_url_hint">Etherpad / Pastebin URL</string>
     <string name="check_updates">Check for updates</string>
     <string name="clear_all">Clear all</string>
+    <string name="print_all">Print all</string>
     <string name="print_now">Print now</string>
     <string name="preview">Preview</string>
     <string name="delete">Delete</string>
@@ -34,4 +35,10 @@
     <string name="preview_options_header">Print preview options</string>
     <string name="etherpad_header">Pastebin / Etherpad settings</string>
     <string name="diagnostics_header">Diagnostics &amp; maintenance</string>
+    <string name="app_theme_header">App theme</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_dark">Dark theme</string>
+    <string name="theme_light">Light theme</string>
+    <string name="sort_oldest_first">Oldest first ↕</string>
+    <string name="sort_newest_first">Newest first ↕</string>
 </resources>

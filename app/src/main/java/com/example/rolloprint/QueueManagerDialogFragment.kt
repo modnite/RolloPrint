@@ -34,20 +34,25 @@ class QueueManagerDialogFragment : DialogFragment() {
 
         val rvQueueJobs = view.findViewById<RecyclerView>(R.id.rvQueueJobs)
         val tvEmptyQueuePlaceholder = view.findViewById<TextView>(R.id.tvEmptyQueuePlaceholder)
+        val btnToggleSortOrder = view.findViewById<MaterialButton>(R.id.btnToggleSortOrder)
+        val btnPrintAllQueue = view.findViewById<MaterialButton>(R.id.btnPrintAllQueue)
         val btnClearAllQueue = view.findViewById<MaterialButton>(R.id.btnClearAllQueue)
         val btnCloseQueue = view.findViewById<MaterialButton>(R.id.btnCloseQueue)
 
         rvQueueJobs.layoutManager = LinearLayoutManager(requireContext())
 
+        var isOldestFirst = true
+
         fun refreshAdapter(jobs: List<JobQueueManager.PrintJob>) {
-            if (jobs.isEmpty()) {
+            val displayJobs = if (isOldestFirst) jobs else jobs.reversed()
+            if (displayJobs.isEmpty()) {
                 rvQueueJobs.visibility = View.GONE
                 tvEmptyQueuePlaceholder?.visibility = View.VISIBLE
             } else {
                 rvQueueJobs.visibility = View.VISIBLE
                 tvEmptyQueuePlaceholder?.visibility = View.GONE
                 rvQueueJobs.adapter = QueueAdapter(
-                    jobs,
+                    displayJobs,
                     onPreview = { job ->
                         dismiss()
                         onPreviewRequested?.invoke(job)
@@ -70,6 +75,16 @@ class QueueManagerDialogFragment : DialogFragment() {
         }
 
         refreshAdapter(jobQueueManager?.getQueuedJobs() ?: emptyList())
+
+        btnToggleSortOrder?.setOnClickListener {
+            isOldestFirst = !isOldestFirst
+            btnToggleSortOrder.text = if (isOldestFirst) getString(R.string.sort_oldest_first) else getString(R.string.sort_newest_first)
+            refreshAdapter(jobQueueManager?.getQueuedJobs() ?: emptyList())
+        }
+
+        btnPrintAllQueue?.setOnClickListener {
+            jobQueueManager?.printAllJobs()
+        }
 
         btnClearAllQueue.setOnClickListener {
             jobQueueManager?.clearQueue()

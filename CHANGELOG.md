@@ -4,6 +4,11 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.9.0` — September 4, 2026 at 10:00 AM
+- **"Print All" Sequential Execution**: Added a "Print all" button on the Print Queue Manager modal (`btnPrintAllQueue`). Sets all held jobs to pending status and processes them sequentially in job order.
+- **Sort Order Toggle (Oldest First ↕ Newest First)**: Added a sort order toggle button (`btnToggleSortOrder`) in the Queue Manager modal header. Lets users switch instantly between chronological order ("Oldest first") and reverse chronological order ("Newest first").
+- **App Theme Selector Setting**: Added an "App theme" section in the Settings menu with System default, Dark theme, and Light theme options (`AppCompatDelegate.setDefaultNightMode()`).
+
 ### `v1.8.2` — September 4, 2026 at 9:00 AM
 - **Full Landscape & DeX Mode Scrollability (`NestedScrollView`)**: Wrapped the main dashboard layout in `NestedScrollView`. Eliminates layout truncation on landscape phone screens, tablets, and Samsung DeX desktop mode.
 - **Standard Sentence Case Capitalization**: Applied standard English capitalization rules across all UI text strings, card headers, popup titles, and buttons throughout the application.
@@ -38,6 +43,11 @@ All notable changes to the **RolloPrint** application are documented in this fil
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v1.9.0` — September 4, 2026 at 10:00 AM
+- **"Print All" Sequential Execution**: Added a "Print all" button on the Print Queue Manager modal (`btnPrintAllQueue`). Sets all held jobs to pending status and processes them sequentially in job order.
+- **Sort Order Toggle (Oldest First ↕ Newest First)**: Added a sort order toggle button (`btnToggleSortOrder`) in the Queue Manager modal header. Lets users switch instantly between chronological order ("Oldest first") and reverse chronological order ("Newest first").
+- **App Theme Selector Setting**: Added an "App theme" section in the Settings menu with System default, Dark theme, and Light theme options (`AppCompatDelegate.setDefaultNightMode()`).
 
 ### `v1.8.2` — September 4, 2026 at 9:00 AM
 - **Full Landscape & DeX Mode Scrollability (`NestedScrollView`)**: Wrapped the main dashboard layout in `NestedScrollView`. Eliminates layout truncation on landscape phone screens, tablets, and Samsung DeX desktop mode.
