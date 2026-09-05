@@ -277,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.9.0";
+        String appVersion = "1.9.1";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -338,7 +338,7 @@ public class MainActivity extends AppCompatActivity {
 
         boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
         boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
-        String savedEtherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "http://192.168.100.208:9001/p/notepad");
+        String savedEtherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "");
         String savedEtherpadApiKey = prefs.getString("PREF_ETHERPAD_API_KEY", "");
 
         switchLocal.setChecked(showLocal);
@@ -380,9 +380,11 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton(R.string.done, (dialog, which) -> {
                     if (etEtherpadUrl != null && etEtherpadUrl.getText() != null) {
                         String newUrl = etEtherpadUrl.getText().toString().trim();
+                        prefs.edit().putString("PREF_ETHERPAD_URL", newUrl).apply();
                         if (!newUrl.isEmpty()) {
-                            prefs.edit().putString("PREF_ETHERPAD_URL", newUrl).apply();
                             log("[SETTINGS] Etherpad Pastebin URL set to: " + newUrl);
+                        } else {
+                            log("[SETTINGS] Etherpad Pastebin URL cleared.");
                         }
                     }
                     if (etEtherpadApiKey != null && etEtherpadApiKey.getText() != null) {
@@ -425,9 +427,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void dumpActivityLogsToEtherpad() {
-        String etherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "http://192.168.100.208:9001/p/notepad");
+        String etherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "").trim();
         String apiKey = prefs.getString("PREF_ETHERPAD_API_KEY", "").trim();
         String logContent = tvLog.getText().toString();
+
+        if (etherpadUrl.isEmpty()) {
+            log("[ETHERPAD] No Pastebin URL configured. Please set your Pastebin URL in Print settings.");
+            showSettingsDialog();
+            return;
+        }
 
         if (logContent.trim().isEmpty()) {
             log("[ETHERPAD] Activity log is empty. Nothing to dump.");
