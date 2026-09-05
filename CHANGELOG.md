@@ -4,6 +4,15 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.2.0` — September 3, 2026 at 4:00 PM
+- **mDNS Service Layer Update**: Configured `_ipp._tcp` on port `8631` with exact driverless discovery TXT keys (`txtvers`, `ty`, `product`, `rp`, `pdl="image/pwg-raster,application/pdf"`, `qtotal`, `printer-state`, `printer-type`, `note`, `UUID`).
+- **HTTP Transport Refactor (Catch-All & Chunked Decoder)**:
+  - Catch-All Routing: Accepts HTTP POST requests sent to ANY URI path (`/`, `/cups`, `/ipp/print`) and routes them all to the IPP request dispatcher.
+  - Chunked Transfer Decoding: Fully decodes `Transfer-Encoding: chunked` HTTP body streams.
+  - Strict Content-Length Framing: Reads exact `Content-Length` byte counts without passing trailing null bytes or socket padding to `jIPP`.
+- **Non-Blocking IPP Job Handling**: Immediately returns HTTP 200 `successful-ok` response with assigned `job-id` and `job-state` before closing socket, preventing client keep-alive deadlocks.
+- **UI Print Preview Modal for Network Jobs**: Saves incoming payloads to `temp_incoming.pdf`, renders page 1 to an 816x1218 @ 203 DPI bitmap, and displays the UI Print Preview modal for user confirmation before streaming bit-packed TSPL to the Rollo USB printer.
+
 ### `v1.1.2` — September 3, 2026 at 3:00 PM
 - **Strict RFC 8011 Request ID & Version Echoing**: Reads 32-bit `request-id` and 16-bit `version-number` from incoming IPP requests and echoes them back in the IPP response headers.
 - **Added Mandatory PWG-Raster Descriptors**: Added `image/pwg-raster` to `document-format-supported`, `pwg-raster-document-resolution-supported` (`203dpi`), `pwg-raster-document-sheet-back` (`normal`), and `pwg-raster-document-type-supported` (`black_1`).

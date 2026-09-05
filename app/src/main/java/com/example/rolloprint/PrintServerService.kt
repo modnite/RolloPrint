@@ -105,12 +105,15 @@ class PrintServerService : Service() {
                 serviceName = SERVICE_NAME
                 serviceType = SERVICE_TYPE
                 port = PORT
+                setAttribute("txtvers", "1")
+                setAttribute("ty", "Rollo Thermal Printer 4x6")
+                setAttribute("product", "(Rollo Thermal Printer 4x6)")
                 setAttribute("rp", "ipp/print")
-                setAttribute("pdl", "application/pdf")
-                setAttribute("note", "Rollo Thermal 4x6")
+                setAttribute("pdl", "image/pwg-raster,application/pdf")
                 setAttribute("qtotal", "1")
                 setAttribute("printer-state", "3")
                 setAttribute("printer-type", "0x4000000")
+                setAttribute("note", "Rollo Thermal 4x6")
                 setAttribute("UUID", "e5b02130-1c4b-483b-9a99-000000000001")
             }
 

@@ -21,6 +21,7 @@ import com.hp.jipp.encoding.ResolutionUnit
 import com.hp.jipp.encoding.Tag
 import com.hp.jipp.model.Finishing
 import com.hp.jipp.model.JobState
+import com.hp.jipp.model.MediaCol
 import com.hp.jipp.model.MediaColDatabase
 import com.hp.jipp.model.Operation
 import com.hp.jipp.model.Orientation
@@ -110,28 +111,14 @@ class IppServer(
             try {
                 socket.soTimeout = 5000
                 val input = socket.getInputStream()
-                val baos = ByteArrayOutputStream()
-                val buffer = ByteArray(4096)
-                var bytesRead: Int
 
                 // 1. Read HTTP Request Headers
-                var headerEnd = -1
-                while (isRunning) {
-                    bytesRead = input.read(buffer)
-                    if (bytesRead == -1) break
-                    baos.write(buffer, 0, bytesRead)
-                    val data = baos.toByteArray()
-                    headerEnd = findHeaderEnd(data)
-                    if (headerEnd != -1) break
-                }
-
-                if (headerEnd == -1) {
+                val headerBytes = readHttpHeaderBytes(input)
+                if (headerBytes.isEmpty()) {
                     socket.close()
                     return@execute
                 }
 
-                val allData = baos.toByteArray()
-                val headerBytes = allData.copyOfRange(0, headerEnd)
                 val headerStr = String(headerBytes, Charsets.US_ASCII)
 
                 // Handle Expect: 100-continue if sent by client
@@ -141,27 +128,32 @@ class IppServer(
                     socket.getOutputStream().flush()
                 }
 
+                // 2. Read HTTP Body (Handling Chunked or Strict Content-Length)
+                val isChunked = headerStr.contains("Transfer-Encoding: chunked", ignoreCase = true)
                 val contentLength = parseContentLength(headerStr)
 
-                // 2. Read HTTP Body
-                val bodyBaos = ByteArrayOutputStream()
-                val initialBodyBytes = allData.copyOfRange(headerEnd, allData.size)
-                bodyBaos.write(initialBodyBytes)
-
-                while (contentLength > 0 && bodyBaos.size() < contentLength && isRunning) {
-                    bytesRead = input.read(buffer)
-                    if (bytesRead == -1) break
-                    bodyBaos.write(buffer, 0, bytesRead)
+                val bodyData = if (isChunked) {
+                    decodeChunkedBody(input)
+                } else if (contentLength > 0) {
+                    val bodyBuf = ByteArray(contentLength)
+                    var totalRead = 0
+                    while (totalRead < contentLength && isRunning) {
+                        val r = input.read(bodyBuf, totalRead, contentLength - totalRead)
+                        if (r == -1) break
+                        totalRead += r
+                    }
+                    bodyBuf.copyOfRange(0, totalRead)
+                } else {
+                    ByteArray(0)
                 }
 
-                val bodyData = bodyBaos.toByteArray()
                 if (bodyData.isEmpty()) {
                     sendHttpResponse(socket, 400, "Bad Request")
                     socket.close()
                     return@execute
                 }
 
-                // 3. Parse IPP Request Packet using HP jipp-core
+                // 3. Parse IPP Request Packet using HP jipp-core (Strict Framing)
                 val ippInputStream = IppInputStream(ByteArrayInputStream(bodyData))
                 val ippRequestPacket = ippInputStream.readPacket()
 
@@ -169,6 +161,7 @@ class IppServer(
                 val operation = ippRequestPacket.operation
                 val requestId = ippRequestPacket.requestId
 
+                // Route ALL URI paths (/, /cups, /ipp/print, etc.) to IPP dispatcher
                 when (operation) {
                     Operation.getPrinterAttributes -> {
                         logger("[IPP] Get-Printer-Attributes request (req-id=$requestId, v=$version) from $clientIp")
@@ -182,16 +175,11 @@ class IppServer(
                         val jobId = jobIdCounter.getAndIncrement()
                         logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
 
+                        // Non-blocking: Immediately write HTTP 200 response to client to prevent keep-alive deadlocks
                         sendPrintJobResponse(socket, version, requestId, jobId)
 
-                        // Document payload follows the IPP packet
-                        val docStart = findByteSequence(bodyData, "%PDF-".toByteArray())
-                        val docData = if (docStart != -1) {
-                            bodyData.copyOfRange(docStart, bodyData.size)
-                        } else {
-                            bodyData
-                        }
-
+                        // Extract document payload
+                        val docData = extractDocumentBytes(bodyData)
                         if (docData.isNotEmpty()) {
                             processIncomingDocumentPayload(docData, jobId)
                         }
@@ -215,14 +203,65 @@ class IppServer(
         }
     }
 
-    private fun findHeaderEnd(data: ByteArray): Int {
-        for (i in 0 until data.size - 3) {
-            if (data[i] == 0x0D.toByte() && data[i + 1] == 0x0A.toByte() &&
-                data[i + 2] == 0x0D.toByte() && data[i + 3] == 0x0A.toByte()) {
-                return i + 4
+    private fun readHttpHeaderBytes(input: InputStream): ByteArray {
+        val baos = ByteArrayOutputStream()
+        var prev3 = -1
+        var prev2 = -1
+        var prev1 = -1
+
+        while (isRunning) {
+            val b = input.read()
+            if (b == -1) break
+            baos.write(b)
+            if (prev3 == 0x0D && prev2 == 0x0A && prev1 == 0x0D && b == 0x0A) { // \r\n\r\n
+                break
             }
+            prev3 = prev2
+            prev2 = prev1
+            prev1 = b
         }
-        return -1
+        return baos.toByteArray()
+    }
+
+    private fun decodeChunkedBody(input: InputStream): ByteArray {
+        val baos = ByteArrayOutputStream()
+        try {
+            while (isRunning) {
+                val line = readAsciiLine(input)
+                val chunkSizeHex = line.substringBefore(";").trim()
+                val chunkSize = chunkSizeHex.toIntOrNull(16) ?: 0
+                if (chunkSize <= 0) {
+                    readAsciiLine(input) // trailing \r\n
+                    break
+                }
+                val chunkBuf = ByteArray(chunkSize)
+                var totalRead = 0
+                while (totalRead < chunkSize && isRunning) {
+                    val r = input.read(chunkBuf, totalRead, chunkSize - totalRead)
+                    if (r == -1) break
+                    totalRead += r
+                }
+                baos.write(chunkBuf, 0, totalRead)
+                readAsciiLine(input) // trailing \r\n after chunk
+            }
+        } catch (_: Exception) {}
+        return baos.toByteArray()
+    }
+
+    private fun readAsciiLine(input: InputStream): String {
+        val baos = ByteArrayOutputStream()
+        var prev = -1
+        while (isRunning) {
+            val b = input.read()
+            if (b == -1) break
+            if (prev == 0x0D && b == 0x0A) { // \r\n
+                val bytes = baos.toByteArray()
+                return String(bytes, 0, Math.max(0, bytes.size - 1), Charsets.US_ASCII)
+            }
+            baos.write(b)
+            prev = b
+        }
+        return String(baos.toByteArray(), Charsets.US_ASCII).trim()
     }
 
     private fun parseContentLength(headers: String): Int {
@@ -233,6 +272,30 @@ class IppServer(
             }
         }
         return 0
+    }
+
+    private fun extractDocumentBytes(data: ByteArray): ByteArray {
+        val pdfHeader = "%PDF-".toByteArray()
+        val pdfStart = findByteSequence(data, pdfHeader)
+        if (pdfStart != -1) {
+            return data.copyOfRange(pdfStart, data.size)
+        }
+
+        val pngHeader = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte())
+        val pngStart = findByteSequence(data, pngHeader)
+        if (pngStart != -1) return data.copyOfRange(pngStart, data.size)
+
+        val jpgHeader = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
+        val jpgStart = findByteSequence(data, jpgHeader)
+        if (jpgStart != -1) return data.copyOfRange(jpgStart, data.size)
+
+        for (i in 8 until data.size) {
+            if (data[i] == 0x03.toByte() && i + 1 < data.size) { // end-of-attributes-tag
+                return data.copyOfRange(i + 1, data.size)
+            }
+        }
+
+        return data
     }
 
     private fun sendGetPrinterAttributesResponse(socket: Socket, version: Int, requestId: Int) {
@@ -248,12 +311,24 @@ class IppServer(
             )
         )
 
-        val mediaSize = MediaColDatabase.MediaSize(
+        val mediaDbSize = MediaColDatabase.MediaSize(
             xDimension = IntOrIntRange(10160),
             yDimension = IntOrIntRange(15240)
         )
         val mediaColDatabase = MediaColDatabase(
-            mediaSize = mediaSize,
+            mediaSize = mediaDbSize,
+            mediaTopMargin = 0,
+            mediaBottomMargin = 0,
+            mediaLeftMargin = 0,
+            mediaRightMargin = 0
+        )
+
+        val mediaDefSize = MediaCol.MediaSize(
+            xDimension = 10160,
+            yDimension = 15240
+        )
+        val mediaColDefault = MediaCol(
+            mediaSize = mediaDefSize,
             mediaTopMargin = 0,
             mediaBottomMargin = 0,
             mediaLeftMargin = 0,
@@ -278,9 +353,10 @@ class IppServer(
                     Operation.getJobAttributes,
                     Operation.getPrinterAttributes
                 ),
+                Types.compressionSupported.of("none"),
                 Types.documentFormatSupported.of(
-                    "application/pdf",
                     "image/pwg-raster",
+                    "application/pdf",
                     "image/png",
                     "image/jpeg",
                     "application/octet-stream"
@@ -305,9 +381,10 @@ class IppServer(
                 Types.mediaDefault.of("oe_4x6-label_4x6in"),
                 Types.mediaReady.of("oe_4x6-label_4x6in"),
                 Types.mediaColDatabase.of(mediaColDatabase),
+                Types.mediaColDefault.of(mediaColDefault),
                 Types.printerResolutionSupported.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
                 Types.printerResolutionDefault.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
-                Types.printerName.of("Rollo Printer"),
+                Types.printerName.of("Rollo Thermal Printer 4x6"),
                 Types.printerInfo.of("Rollo Thermal Printer 4x6"),
                 Types.printerLocation.of("Local Network"),
                 Types.printerMakeAndModel.of("Rollo Thermal Printer 4x6"),
@@ -432,7 +509,7 @@ class IppServer(
     }
 
     private fun processIncomingDocumentPayload(data: ByteArray, jobId: Int) {
-        val pdfFile = File(context.cacheDir, "ipp_job_$jobId.pdf")
+        val tempPdfFile = File(context.cacheDir, "temp_incoming.pdf")
 
         try {
             // 1. Check if incoming payload contains PDF (%PDF-)
@@ -440,9 +517,9 @@ class IppServer(
             val pdfStart = findByteSequence(data, pdfHeader)
             if (pdfStart != -1) {
                 val pdfBytes = data.copyOfRange(pdfStart, data.size)
-                FileOutputStream(pdfFile).use { it.write(pdfBytes) }
-                logger("[IPP] Extracted PDF document (${pdfBytes.size} bytes) for Job #$jobId")
-                ingestPdfToLocalPrint(pdfFile)
+                FileOutputStream(tempPdfFile).use { it.write(pdfBytes) }
+                logger("[IPP] Saved PDF document (${pdfBytes.size} bytes) for Job #$jobId")
+                ingestPdfToLocalPrint(tempPdfFile)
                 return
             }
 
@@ -458,8 +535,8 @@ class IppServer(
                 val bitmap = BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.size)
                 if (bitmap != null) {
                     logger("[IPP] Extracted Image document for Job #$jobId. Converting to 4x6 PDF...")
-                    createPdfFromBitmap(bitmap, pdfFile)
-                    ingestPdfToLocalPrint(pdfFile)
+                    createPdfFromBitmap(bitmap, tempPdfFile)
+                    ingestPdfToLocalPrint(tempPdfFile)
                     return
                 }
             }
@@ -467,15 +544,11 @@ class IppServer(
             // 3. Fallback: Text/PostScript stream -> Convert to 4x6 PDF
             logger("[IPP] Converting Text/PostScript stream to 4x6 PDF for Job #$jobId...")
             val textContent = String(data, Charsets.UTF_8)
-            createPdfFromText(textContent, pdfFile)
-            ingestPdfToLocalPrint(pdfFile)
+            createPdfFromText(textContent, tempPdfFile)
+            ingestPdfToLocalPrint(tempPdfFile)
 
         } catch (e: Exception) {
             logger("[IPP] ERROR processing IPP job #$jobId: ${e.message}")
-        } finally {
-            if (pdfFile.exists()) {
-                pdfFile.delete()
-            }
         }
     }
 
