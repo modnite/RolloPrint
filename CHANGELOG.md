@@ -4,6 +4,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.8.2` — September 4, 2026 at 9:00 AM
+- **Full Landscape & DeX Mode Scrollability (`NestedScrollView`)**: Wrapped the main dashboard layout in `NestedScrollView`. Eliminates layout truncation on landscape phone screens, tablets, and Samsung DeX desktop mode.
+- **Standard Sentence Case Capitalization**: Applied standard English capitalization rules across all UI text strings, card headers, popup titles, and buttons throughout the application.
+
 ### `v1.8.1` — September 4, 2026 at 8:00 AM
 - **Live Real-Time Queue Manager Updates**: Connected `onQueueJobsChanged` in `JobQueueManager` to `QueueManagerDialogFragment`. Queued jobs now stream in and out live in real-time without requiring closing and reopening the modal.
 - **Material 3 Queue Manager Styling & Empty Placeholder**: Styled the Queue Manager dialog with `MaterialAlertDialogBuilder` matching 100% visual consistency with the Settings popup. Added a clean empty placeholder layout when the queue contains no jobs.
@@ -34,6 +38,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v1.8.2` — September 4, 2026 at 9:00 AM
+- **Full Landscape & DeX Mode Scrollability (`NestedScrollView`)**: Wrapped the main dashboard layout in `NestedScrollView`. Eliminates layout truncation on landscape phone screens, tablets, and Samsung DeX desktop mode.
+- **Standard Sentence Case Capitalization**: Applied standard English capitalization rules across all UI text strings, card headers, popup titles, and buttons throughout the application.
 
 ### `v1.8.1` — September 4, 2026 at 8:00 AM
 - **Live Real-Time Queue Manager Updates**: Connected `onQueueJobsChanged` in `JobQueueManager` to `QueueManagerDialogFragment`. Queued jobs now stream in and out live in real-time without requiring closing and reopening the modal.
