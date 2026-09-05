@@ -14,4 +14,8 @@
     <string name="confirm_print">Confirm Print</string>
     <string name="settings">Settings</string>
     <string name="done">Done</string>
+    <string name="print_queue">Print Queue</string>
+    <string name="queue_empty">Queue: Empty</string>
+    <string name="clear_queue">Clear Queue</string>
+    <string name="expand_activity_log">Expand Activity Log</string>
 </resources>

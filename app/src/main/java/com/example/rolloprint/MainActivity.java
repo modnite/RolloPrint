@@ -18,6 +18,7 @@ import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -42,12 +43,14 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private UsbPrintManager printManager;
+    private JobQueueManager jobQueueManager;
     private TextView tvLog;
-    private ScrollView scrollView;
+    private ScrollView scrollViewLog;
     private Bitmap lastRenderedBitmap;
 
     private MaterialSwitch switchServer;
     private TextView tvServerStatus;
+    private TextView tvQueueStatus;
     private TextView tvHeaderVersion;
     private PrintServerService printServerService;
     private SharedPreferences prefs;
@@ -94,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                         log("Permission GRANTED for Rollo. Re-triggering print...");
                         if (lastRenderedBitmap != null) {
-                            printManager.printBitmapAsync(lastRenderedBitmap);
+                            jobQueueManager.addJob(lastRenderedBitmap, "Permission Retry Job");
                         }
                     } else {
                         log("Permission DENIED for Rollo.");
@@ -133,10 +136,12 @@ public class MainActivity extends AppCompatActivity {
         });
 
         tvLog = findViewById(R.id.tvLog);
-        scrollView = findViewById(R.id.scrollView);
+        scrollViewLog = findViewById(R.id.scrollViewLog);
         Button btnSelect = findViewById(R.id.btnSelect);
         switchServer = findViewById(R.id.switchServer);
         tvServerStatus = findViewById(R.id.tvServerStatus);
+        tvQueueStatus = findViewById(R.id.tvQueueStatus);
+        Button btnClearQueue = findViewById(R.id.btnClearQueue);
         tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
 
         ImageButton btnSettings = findViewById(R.id.btnSettings);
@@ -145,6 +150,39 @@ public class MainActivity extends AppCompatActivity {
         printManager = new UsbPrintManager(this, text -> {
             log(text);
             return null;
+        });
+
+        jobQueueManager = new JobQueueManager(
+                printManager,
+                text -> {
+                    log(text);
+                    return null;
+                },
+                count -> {
+                    runOnUiThread(() -> {
+                        if (count == 0) {
+                            tvQueueStatus.setText(R.string.queue_empty);
+                        } else {
+                            tvQueueStatus.setText("Queue: " + count + " job(s) waiting");
+                        }
+                    });
+                    return null;
+                }
+        );
+
+        btnClearQueue.setOnClickListener(v -> jobQueueManager.clearQueue());
+
+        View layoutLogHeaderClickable = findViewById(R.id.layoutLogHeaderClickable);
+        ImageView ivLogExpandArrow = findViewById(R.id.ivLogExpandArrow);
+
+        layoutLogHeaderClickable.setOnClickListener(v -> {
+            if (scrollViewLog.getVisibility() == View.VISIBLE) {
+                scrollViewLog.setVisibility(View.GONE);
+                ivLogExpandArrow.animate().rotation(0f).setDuration(200).start();
+            } else {
+                scrollViewLog.setVisibility(View.VISIBLE);
+                ivLogExpandArrow.animate().rotation(180f).setDuration(200).start();
+            }
         });
 
         btnSelect.setOnClickListener(v -> {
@@ -184,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.3.5";
+        String appVersion = "1.4.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -306,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             String timestamp = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
             tvLog.append("[" + timestamp + "] " + text + "\n");
-            scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
+            scrollViewLog.post(() -> scrollViewLog.fullScroll(ScrollView.FOCUS_DOWN));
         });
     }
 
@@ -318,8 +356,8 @@ public class MainActivity extends AppCompatActivity {
             if (showPreview) {
                 showPrintPreview(bitmap);
             } else {
-                log("[LOCAL] Local preview disabled in settings. Streaming directly to Rollo...");
-                printManager.printBitmapAsync(bitmap);
+                log("[LOCAL] Local preview disabled in settings. Adding to print queue...");
+                jobQueueManager.addJob(bitmap, "Local Label");
             }
         }
     }
@@ -328,8 +366,8 @@ public class MainActivity extends AppCompatActivity {
         PrintPreviewDialogFragment previewDialog = PrintPreviewDialogFragment.Companion.newInstance(
                 bitmap,
                 () -> {
-                    log("[LOCAL] User confirmed print. Streaming to Rollo...");
-                    printManager.printBitmapAsync(bitmap);
+                    log("[LOCAL] User confirmed print. Adding to print queue...");
+                    jobQueueManager.addJob(bitmap, "Local Label");
                 }
         );
         previewDialog.show(getSupportFragmentManager(), "PrintPreview");

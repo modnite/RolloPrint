@@ -4,6 +4,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.4.0` — September 3, 2026 at 10:00 PM
+- **Print Queue Card with Clear Queue Button**: Added a dedicated Print Queue Card in the main UI displaying real-time queue count (`Queue: Empty` or `Queue: X job(s) waiting`) and a `Clear Queue` button. Un-printed jobs waiting during paper changes or hardware disconnects can now be purged instantly.
+- **`JobQueueManager` Integration**: Built a thread-safe sequential job queue manager that processes local and network jobs sequentially and updates queue state in real-time.
+- **Collapsible Activity Log Console**: Formatted the activity log card to be collapsible (collapsed by default). Tapping the header bar smoothly expands or collapses the console with an animated arrow indicator.
+- **Default Network Preview Setting**: Confirmed `PREF_NETWORK_PREVIEW` defaults to `false` for new installs.
+
 ### `v1.3.5` — September 3, 2026 at 9:00 PM
 - **Fixed Network Print Preview Callback Wiring**: Passed `onNetworkBitmapRendered` from `PrintServerService` to `IppServer`, making the "Preview Network Prints" setting fully functional when enabled.
 - **CUPS `#PDF-BANNER` Test Page Rendering**: Added a native 4x6 thermal test page renderer (`createCupsTestPagePdf`) for Linux CUPS and KDE Plasma test pages, printing a crisp, professional **RolloPrint Test Page** with printer status, resolution, and timestamp instead of raw banner text code.

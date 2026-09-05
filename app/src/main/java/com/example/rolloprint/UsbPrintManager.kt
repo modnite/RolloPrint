@@ -128,24 +128,29 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         return baos.toByteArray()
     }
 
-    fun printBitmapAsync(bitmap: Bitmap) {
+    fun printBitmapAsync(bitmap: Bitmap, onComplete: ((Boolean) -> Unit)? = null) {
         executor.execute {
+            var success = false
             try {
                 val tsplData = generateTsplPayload(bitmap)
                 val device = findRolloDevice()
 
                 if (device == null) {
                     logger("CRITICAL: Rollo X1038 not found.")
+                    onComplete?.invoke(false)
                     return@execute
                 }
 
                 if (!usbManager.hasPermission(device)) {
                     requestPermission(device)
+                    onComplete?.invoke(false)
                 } else {
-                    executeUsbTransfer(device, tsplData)
+                    success = executeUsbTransfer(device, tsplData)
+                    onComplete?.invoke(success)
                 }
             } catch (e: Exception) {
                 logger("PRINT ERROR: ${e.message}")
+                onComplete?.invoke(false)
             }
         }
     }
@@ -162,18 +167,18 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         usbManager.requestPermission(device, permissionIntent)
     }
 
-    private fun executeUsbTransfer(device: UsbDevice, data: ByteArray) {
+    private fun executeUsbTransfer(device: UsbDevice, data: ByteArray): Boolean {
         logger("Connecting to Rollo hardware...")
         val connection = usbManager.openDevice(device) ?: run {
             logger("ERROR: Connection failed.")
-            return
+            return false
         }
 
         try {
             val usbInterface = device.getInterface(0)
             if (!connection.claimInterface(usbInterface, true)) {
                 logger("ERROR: Interface Busy.")
-                return
+                return false
             }
 
             val endpoint = (0 until usbInterface.endpointCount)
@@ -182,7 +187,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
             if (endpoint == null) {
                 logger("ERROR: Endpoint Mismatch.")
-                return
+                return false
             }
 
             logger("Streaming data stream (${data.size} bytes)...")
@@ -202,11 +207,13 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                 Thread.sleep(10)
             }
 
+            connection.releaseInterface(usbInterface)
+
             if (bytesSent == data.size) {
                 logger("SUCCESS: Job confirmed by printer hardware.")
+                return true
             }
-
-            connection.releaseInterface(usbInterface)
+            return false
         } finally {
             connection.close()
         }
