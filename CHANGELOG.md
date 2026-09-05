@@ -4,6 +4,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.3.3` — September 3, 2026 at 7:30 PM
+- **Replaced App Launcher Icon from `C:\Users\c\Pictures\RolloPrint.png`**: Updated all mipmap launcher icon folders (`mipmap-mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) and round icons (`ic_launcher_round.png`) with the exact 66.5KB custom RolloPrint logo.
+- **Renamed App Label & Output APK**: Updated application label in `AndroidManifest.xml` and `strings.xml` to `RolloPrint` and output binary filename to `RolloPrint.apk`.
+
 ### `v1.3.2` — September 3, 2026 at 7:00 PM
 - **App Launcher Icon Updated**: Re-propagated custom Rollo Thermal Printer logo PNG across all mipmap density folders and generated round launcher icons (`ic_launcher_round.png`).
 - **Clean UI Title Header**: Removed the image icon from the top title card and formatted the app title cleanly as a single word: **`RolloPrint`**.
