@@ -27,13 +27,20 @@ class JobQueueManager(
     @Volatile
     private var isProcessing = false
 
+    var onQueueJobsChanged: ((List<PrintJob>) -> Unit)? = null
+
+    private fun notifyQueueChanged() {
+        val jobs = queue.toList()
+        onQueueChanged(jobs.size)
+        onQueueJobsChanged?.invoke(jobs)
+    }
+
     fun addJob(bitmap: Bitmap, name: String) {
         val jobId = (1000..9999).random()
         val job = PrintJob(jobId, bitmap, name, JobStatus.PENDING)
         queue.add(job)
-        val currentSize = queue.size
-        logger("[QUEUE] Job '$name' (#$jobId) added to queue. Total in queue: $currentSize")
-        onQueueChanged(currentSize)
+        logger("[QUEUE] Job '$name' (#$jobId) added to queue. Total in queue: ${queue.size}")
+        notifyQueueChanged()
         processNextJob()
     }
 
@@ -41,11 +48,12 @@ class JobQueueManager(
         synchronized(this) {
             if (isProcessing) return
             val nextJob = queue.find { it.status == JobStatus.PENDING } ?: run {
-                onQueueChanged(queue.count { it.status != JobStatus.COMPLETED && it.status != JobStatus.FAILED })
+                notifyQueueChanged()
                 return
             }
             isProcessing = true
             nextJob.status = JobStatus.PRINTING
+            notifyQueueChanged()
 
             logger("[QUEUE] Printing job '${nextJob.name}' (#${nextJob.id})...")
 
@@ -55,17 +63,15 @@ class JobQueueManager(
                     if (success) {
                         nextJob.status = JobStatus.COMPLETED
                         queue.remove(nextJob)
-                        val remaining = queue.size
-                        onQueueChanged(remaining)
-                        logger("[QUEUE] Completed job #${nextJob.id}. Remaining in queue: $remaining")
-                        if (remaining > 0) {
+                        notifyQueueChanged()
+                        logger("[QUEUE] Completed job #${nextJob.id}. Remaining in queue: ${queue.size}")
+                        if (queue.isNotEmpty()) {
                             processNextJob()
                         }
                     } else {
                         nextJob.status = JobStatus.HELD
-                        val remaining = queue.size
-                        onQueueChanged(remaining)
-                        logger("[QUEUE] Job #${nextJob.id} HELD (Hardware error / Out of paper). Remaining in queue: $remaining")
+                        notifyQueueChanged()
+                        logger("[QUEUE] Job #${nextJob.id} HELD (Hardware error / Out of paper). Remaining in queue: ${queue.size}")
                     }
                 }
             }
@@ -78,6 +84,7 @@ class JobQueueManager(
             if (job != null) {
                 job.status = JobStatus.PENDING
                 logger("[QUEUE] User manually triggered job #${job.id} ('${job.name}')...")
+                notifyQueueChanged()
                 processNextJob()
             }
         }
@@ -86,9 +93,8 @@ class JobQueueManager(
     fun removeJob(jobId: Int) {
         synchronized(this) {
             queue.removeAll { it.id == jobId }
-            val remaining = queue.size
-            onQueueChanged(remaining)
-            logger("[QUEUE] Removed job #$jobId from queue. Remaining: $remaining")
+            notifyQueueChanged()
+            logger("[QUEUE] Removed job #$jobId from queue. Remaining: ${queue.size}")
         }
     }
 
@@ -96,7 +102,7 @@ class JobQueueManager(
         synchronized(this) {
             val count = queue.size
             queue.clear()
-            onQueueChanged(0)
+            notifyQueueChanged()
             logger("[QUEUE] Cleared $count queued job(s) from print queue.")
         }
     }

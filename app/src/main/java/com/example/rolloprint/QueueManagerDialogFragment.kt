@@ -1,5 +1,6 @@
 package com.example.rolloprint
 
+import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,6 +10,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class QueueManagerDialogFragment : DialogFragment() {
 
@@ -27,53 +29,62 @@ class QueueManagerDialogFragment : DialogFragment() {
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.dialog_queue_manager, container, false)
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_queue_manager, null)
 
         val rvQueueJobs = view.findViewById<RecyclerView>(R.id.rvQueueJobs)
+        val tvEmptyQueuePlaceholder = view.findViewById<TextView>(R.id.tvEmptyQueuePlaceholder)
         val btnClearAllQueue = view.findViewById<MaterialButton>(R.id.btnClearAllQueue)
         val btnCloseQueue = view.findViewById<MaterialButton>(R.id.btnCloseQueue)
 
-        rvQueueJobs.layoutManager = LinearLayoutManager(context)
+        rvQueueJobs.layoutManager = LinearLayoutManager(requireContext())
 
-        fun refreshAdapter() {
-            val jobs = jobQueueManager?.getQueuedJobs() ?: emptyList()
-            rvQueueJobs.adapter = QueueAdapter(jobs,
-                onPreview = { job ->
-                    dismiss()
-                    onPreviewRequested?.invoke(job)
-                },
-                onPrintNow = { job ->
-                    jobQueueManager?.printJobManual(job.id)
-                    refreshAdapter()
-                },
-                onDelete = { job ->
-                    jobQueueManager?.removeJob(job.id)
-                    refreshAdapter()
-                }
-            )
+        fun refreshAdapter(jobs: List<JobQueueManager.PrintJob>) {
+            if (jobs.isEmpty()) {
+                rvQueueJobs.visibility = View.GONE
+                tvEmptyQueuePlaceholder?.visibility = View.VISIBLE
+            } else {
+                rvQueueJobs.visibility = View.VISIBLE
+                tvEmptyQueuePlaceholder?.visibility = View.GONE
+                rvQueueJobs.adapter = QueueAdapter(
+                    jobs,
+                    onPreview = { job ->
+                        dismiss()
+                        onPreviewRequested?.invoke(job)
+                    },
+                    onPrintNow = { job ->
+                        jobQueueManager?.printJobManual(job.id)
+                    },
+                    onDelete = { job ->
+                        jobQueueManager?.removeJob(job.id)
+                    }
+                )
+            }
         }
 
-        refreshAdapter()
+        // Live Real-Time Queue Streaming Listener
+        jobQueueManager?.onQueueJobsChanged = { jobs ->
+            activity?.runOnUiThread {
+                refreshAdapter(jobs)
+            }
+        }
+
+        refreshAdapter(jobQueueManager?.getQueuedJobs() ?: emptyList())
 
         btnClearAllQueue.setOnClickListener {
             jobQueueManager?.clearQueue()
-            refreshAdapter()
         }
 
         btnCloseQueue.setOnClickListener { dismiss() }
+
+        return MaterialAlertDialogBuilder(requireContext())
+            .setView(view)
+            .create()
     }
 
-    override fun onStart() {
-        super.onStart()
-        dialog?.window?.apply {
-            val width = (resources.displayMetrics.widthPixels * 0.92).toInt()
-            setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
-        }
+    override fun onDestroyView() {
+        jobQueueManager?.onQueueJobsChanged = null
+        super.onDestroyView()
     }
 
     private class QueueAdapter(
