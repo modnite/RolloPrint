@@ -336,8 +336,15 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
     private fun executeUsbTransfer(device: UsbDevice, data: ByteArray): Boolean {
         synchronized(usbLock) {
             val hwStateStr = currentHardwareStates.joinToString(", ")
+
+            // PRE-TRANSFER GUARD: Abort USB transfer if printer is Out of Paper or Cover Open!
+            if (currentHardwareStates.contains(HardwareState.OUT_OF_PAPER) || currentHardwareStates.contains(HardwareState.HEAD_OPEN)) {
+                logger("[JOB_TRANSFER] ABORTED: Rollo printer is OUT OF PAPER / COVER OPEN ($hwStateStr). Holding job in app memory queue.")
+                return false
+            }
+
             logger("[JOB_TRANSFER] Starting USB transfer (${data.size} bytes) | Hardware State: [$hwStateStr]")
-            
+
             val connection = usbManager.openDevice(device) ?: run {
                 logger("ERROR: Connection failed.")
                 return false
