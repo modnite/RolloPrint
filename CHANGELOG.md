@@ -4,6 +4,9 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.7.3` — September 4, 2026 at 6:00 AM
+- **Settings Dialog Vertical ScrollView**: Wrapped the entire Settings menu layout in a vertical `ScrollView`. Resolves dialog content clipping on smaller screens and ensures all buttons, text fields, and switches remain fully scrollable and accessible.
+
 ### `v1.7.2` — September 4, 2026 at 5:30 AM
 - **Activity Log Bottom Padding Fix**: Added bottom padding (`android:paddingBottom="24dp"`) and `clipToPadding="false"` to the collapsible Activity Log `ScrollView`. Ensures the last line of log text is fully visible and never cut off by the bottom card border.
 
@@ -22,6 +25,9 @@ All notable changes to the **RolloPrint** application are documented in this fil
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v1.7.3` — September 4, 2026 at 6:00 AM
+- **Settings Dialog Vertical ScrollView**: Wrapped the entire Settings menu layout in a vertical `ScrollView`. Resolves dialog content clipping on smaller screens and ensures all buttons, text fields, and switches remain fully scrollable and accessible.
 
 ### `v1.7.2` — September 4, 2026 at 5:30 AM
 - **Activity Log Bottom Padding Fix**: Added bottom padding (`android:paddingBottom="24dp"`) and `clipToPadding="false"` to the collapsible Activity Log `ScrollView`. Ensures the last line of log text is fully visible and never cut off by the bottom card border.

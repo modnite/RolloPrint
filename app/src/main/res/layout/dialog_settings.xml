@@ -1,149 +1,155 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:scrollbars="vertical"
+    android:padding="20dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/print_settings_title"
-        android:textAppearance="?attr/textAppearanceTitleLarge"
-        android:textColor="?attr/colorOnSurface"
-        android:layout_marginBottom="16dp" />
-
-    <!-- Local Print Preview Switch -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingVertical="12dp">
+        android:orientation="vertical">
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/preview_local_prints"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:textColor="?attr/colorOnSurface" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/preview_local_prints_sub"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-        </LinearLayout>
-
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/switchLocalPreviewDialog"
+        <TextView
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </LinearLayout>
-
-    <com.google.android.material.divider.MaterialDivider
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginVertical="8dp" />
-
-    <!-- Network Print Preview Switch -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingVertical="12dp">
-
-        <LinearLayout
-            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:text="@string/print_settings_title"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginBottom="16dp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/preview_network_prints"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:textColor="?attr/colorOnSurface" />
+        <!-- Local Print Preview Switch -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingVertical="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="@string/preview_network_prints_sub"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/preview_local_prints"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/preview_local_prints_sub"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchLocalPreviewDialog"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
         </LinearLayout>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="8dp" />
+
+        <!-- Network Print Preview Switch -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingVertical="12dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/preview_network_prints"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/preview_network_prints_sub"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/switchNetworkPreviewDialog"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="8dp" />
+
+        <!-- Etherpad / Pastebin URL Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/etherpad_url_hint"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEtherpadUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri"
+                android:text="http://192.168.100.208:9001/p/notepad" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Etherpad API Key (Optional)"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEtherpadApiKey"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="8dp" />
+
+        <!-- Hardware Status Diagnostic Check Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDiagnostics"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Run Hardware Status Check" />
+
+        <!-- Check for Updates Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCheckUpdates"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/check_updates" />
+
     </LinearLayout>
-
-    <com.google.android.material.divider.MaterialDivider
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginVertical="8dp" />
-
-    <!-- Etherpad / Pastebin URL Input -->
-    <com.google.android.material.textfield.TextInputLayout
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/etherpad_url_hint"
-        android:layout_marginTop="8dp">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etEtherpadUrl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textUri"
-            android:text="http://192.168.100.208:9001/p/notepad" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Etherpad API Key (Optional)"
-        android:layout_marginTop="8dp">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etEtherpadApiKey"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textPassword" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.divider.MaterialDivider
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginVertical="8dp" />
-
-    <!-- Hardware Status Diagnostic Check Button -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnDiagnostics"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Run Hardware Status Check" />
-
-    <!-- Check for Updates Button -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnCheckUpdates"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/check_updates" />
-
-</LinearLayout>
+</ScrollView>
