@@ -21,6 +21,8 @@ import android.widget.ImageButton;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -51,6 +53,18 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences prefs;
     private boolean isServiceBound = false;
     private boolean isUpdatingSwitchProgrammatically = false;
+
+    private final ActivityResultLauncher<Intent> pdfPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Uri uri = result.getData().getData();
+                    if (uri != null) {
+                        renderAndPreview(uri);
+                    }
+                }
+            }
+    );
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -137,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
             log("[LOCAL] --- Direct TSPL Label Print ---");
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/pdf");
-            startActivityForResult(intent, 101);
+            pdfPickerLauncher.launch(intent);
         });
 
         switchServer.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -170,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.3.3";
+        String appVersion = "1.3.4";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -210,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
 
         new MaterialAlertDialogBuilder(this)
                 .setView(dialogView)
-                .setPositiveButton("Done", null)
+                .setPositiveButton(R.string.done, null)
                 .show();
     }
 
@@ -246,12 +260,6 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
-            }
-        }
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
             }
         }
 
@@ -296,17 +304,6 @@ public class MainActivity extends AppCompatActivity {
             tvLog.append("[" + timestamp + "] " + text + "\n");
             scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
         });
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 101 && resultCode == RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri != null) {
-                renderAndPreview(uri);
-            }
-        }
     }
 
     private void renderAndPreview(Uri uri) {

@@ -4,6 +4,13 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.3.4` — September 3, 2026 at 8:00 PM
+- **GitHub Release CI Workflow Fix**: Updated `.github/workflows/release.yml` to build `assembleRelease` and attach `app/build/outputs/apk/release/*.apk` (wildcard matching `RolloPrint.apk`). Resolves the missing release binary issue on GitHub Releases.
+- **Extracted UI Layout Strings into `strings.xml`**: Extracted hardcoded layout strings into string resources in `res/values/strings.xml`, resolving all Android Studio layout lint warnings.
+- **Modernized File Picker API**: Replaced deprecated `startActivityForResult` in `MainActivity.java` with Android's modern `registerForActivityResult(ActivityResultContracts.StartActivityForResult)` API.
+- **Cleaned Up Permissions & Codebase**: Removed deprecated `READ_EXTERNAL_STORAGE` permission from `AndroidManifest.xml` and removed unused legacy functions in `UsbPrintManager.kt`.
+- **Gradle Version Catalog Integration**: Declared `com.hp.jipp:jipp-core:0.7.18` in `gradle/libs.versions.toml` catalog for clean dependency management.
+
 ### `v1.3.3` — September 3, 2026 at 7:30 PM
 - **Replaced App Launcher Icon from `C:\Users\c\Pictures\RolloPrint.png`**: Updated all mipmap launcher icon folders (`mipmap-mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) and round icons (`ic_launcher_round.png`) with the exact 66.5KB custom RolloPrint logo.
 - **Renamed App Label & Output APK**: Updated application label in `AndroidManifest.xml` and `strings.xml` to `RolloPrint` and output binary filename to `RolloPrint.apk`.

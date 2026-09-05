@@ -59,7 +59,7 @@ class PrintPreviewDialogFragment : DialogFragment() {
 
         val ivPreview = view.findViewById<ImageView>(R.id.ivPreview)
         val btnCancel = view.findViewById<MaterialButton>(R.id.btnCancel)
-        val btnConfirm = view.findViewById<MaterialButton>(R.id.btnConfirm)
+        val btnConfirm = view.findViewById<MaterialButton>(R.id.btnPrintConfirm)
 
         ivPreview.setImageBitmap(originalBitmap)
 

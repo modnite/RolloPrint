@@ -150,26 +150,6 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         }
     }
 
-    fun printRawBytesAsync(data: ByteArray) {
-        executor.execute {
-            try {
-                val device = findRolloDevice()
-                if (device == null) {
-                    logger("CRITICAL: Rollo X1038 not found.")
-                    return@execute
-                }
-
-                if (!usbManager.hasPermission(device)) {
-                    requestPermission(device)
-                } else {
-                    executeUsbTransfer(device, data)
-                }
-            } catch (e: Exception) {
-                logger("PRINT ERROR: ${e.message}")
-            }
-        }
-    }
-
     private fun findRolloDevice(): UsbDevice? {
         return usbManager.deviceList.values.find { it.vendorId == ROLLO_VID && it.productId == ROLLO_PID }
     }
