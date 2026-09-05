@@ -34,12 +34,20 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.textfield.TextInputEditText;
 
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
     private UsbPrintManager printManager;
@@ -142,10 +150,15 @@ public class MainActivity extends AppCompatActivity {
         tvServerStatus = findViewById(R.id.tvServerStatus);
         tvQueueStatus = findViewById(R.id.tvQueueStatus);
         Button btnClearQueue = findViewById(R.id.btnClearQueue);
+        Button btnDumpLogs = findViewById(R.id.btnDumpLogs);
         tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
 
         ImageButton btnSettings = findViewById(R.id.btnSettings);
         btnSettings.setOnClickListener(v -> showSettingsDialog());
+
+        if (btnDumpLogs != null) {
+            btnDumpLogs.setOnClickListener(v -> dumpActivityLogsToEtherpad());
+        }
 
         printManager = new UsbPrintManager(this, text -> {
             log(text);
@@ -249,7 +262,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.5.2";
+        String appVersion = "1.6.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -270,13 +283,18 @@ public class MainActivity extends AppCompatActivity {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_settings, null);
         MaterialSwitch switchLocal = dialogView.findViewById(R.id.switchLocalPreviewDialog);
         MaterialSwitch switchNetwork = dialogView.findViewById(R.id.switchNetworkPreviewDialog);
+        TextInputEditText etEtherpadUrl = dialogView.findViewById(R.id.etEtherpadUrl);
         Button btnDiagnostics = dialogView.findViewById(R.id.btnDiagnostics);
 
         boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
         boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
+        String savedEtherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "http://192.168.100.208:9001/p/notepad");
 
         switchLocal.setChecked(showLocal);
         switchNetwork.setChecked(showNetwork);
+        if (etEtherpadUrl != null) {
+            etEtherpadUrl.setText(savedEtherpadUrl);
+        }
 
         switchLocal.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("PREF_LOCAL_PREVIEW", isChecked).apply();
@@ -297,8 +315,96 @@ public class MainActivity extends AppCompatActivity {
 
         new MaterialAlertDialogBuilder(this)
                 .setView(dialogView)
-                .setPositiveButton(R.string.done, null)
+                .setPositiveButton(R.string.done, (dialog, which) -> {
+                    if (etEtherpadUrl != null && etEtherpadUrl.getText() != null) {
+                        String newUrl = etEtherpadUrl.getText().toString().trim();
+                        if (!newUrl.isEmpty()) {
+                            prefs.edit().putString("PREF_ETHERPAD_URL", newUrl).apply();
+                            log("[SETTINGS] Etherpad Pastebin URL set to: " + newUrl);
+                        }
+                    }
+                })
                 .show();
+    }
+
+    private void dumpActivityLogsToEtherpad() {
+        String etherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "http://192.168.100.208:9001/p/notepad");
+        String logContent = tvLog.getText().toString();
+
+        if (logContent.trim().isEmpty()) {
+            log("[ETHERPAD] Activity log is empty. Nothing to dump.");
+            return;
+        }
+
+        log("[ETHERPAD] Dumping activity log to " + etherpadUrl + "...");
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                String cleanUrl = etherpadUrl.trim();
+                if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+                    cleanUrl = "http://" + cleanUrl;
+                }
+
+                URI uri = new URI(cleanUrl);
+                String host = uri.getHost() != null ? uri.getHost() : "127.0.0.1";
+                int port = uri.getPort() != -1 ? uri.getPort() : 9001;
+                String scheme = uri.getScheme() != null ? uri.getScheme() : "http";
+                String path = uri.getPath() != null ? uri.getPath() : "/p/notepad";
+                String padId = path.startsWith("/p/") ? path.substring(3) : "notepad";
+
+                String apiUrl = scheme + "://" + host + ":" + port + "/api/1/setText";
+
+                URL url = new URL(apiUrl);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+                String postData = "padID=" + URLEncoder.encode(padId, "UTF-8") +
+                        "&text=" + URLEncoder.encode(logContent, "UTF-8");
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(postData.getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                }
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
+                    log("[ETHERPAD] SUCCESS: Activity log dumped to Etherpad (" + padId + ").");
+                } else {
+                    log("[ETHERPAD] WARNING: Etherpad returned HTTP " + responseCode + ". Trying direct pad POST...");
+                    postDirectToPad(cleanUrl, logContent);
+                }
+            } catch (Exception e) {
+                log("[ETHERPAD] API dump notice (" + e.getMessage() + "). Trying direct pad POST...");
+                postDirectToPad(etherpadUrl, logContent);
+            }
+        });
+    }
+
+    private void postDirectToPad(String padUrl, String logContent) {
+        try {
+            URL url = new URL(padUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            String postData = "text=" + URLEncoder.encode(logContent, "UTF-8");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(postData.getBytes(StandardCharsets.UTF_8));
+                os.flush();
+            }
+
+            int responseCode = conn.getResponseCode();
+            log("[ETHERPAD] Direct pad POST completed with HTTP " + responseCode);
+        } catch (Exception e) {
+            log("[ETHERPAD] Direct pad POST notice: " + e.getMessage());
+        }
     }
 
     private void startIppServer() {

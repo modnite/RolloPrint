@@ -4,9 +4,15 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.6.0` — September 4, 2026 at 3:00 AM
+- **Etherpad / Pastebin Activity Log Dumper**: Added a "Dump to Pastebin" action button under the Activity Log console and an Etherpad / Pastebin URL configuration field in the Settings menu (`PREF_ETHERPAD_URL`, defaulting to `http://192.168.100.208:9001/p/notepad`). Easily posts activity logs directly to your Etherpad instance with a single tap.
+
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v1.6.0` — September 4, 2026 at 3:00 AM
+- **Etherpad / Pastebin Activity Log Dumper**: Added a "Dump to Pastebin" action button under the Activity Log console and an Etherpad / Pastebin URL configuration field in the Settings menu (`PREF_ETHERPAD_URL`, defaulting to `http://192.168.100.208:9001/p/notepad`). Easily posts activity logs directly to your Etherpad instance with a single tap.
 
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
