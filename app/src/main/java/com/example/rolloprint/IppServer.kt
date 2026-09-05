@@ -10,6 +10,8 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import com.hp.jipp.encoding.AttributeGroup
+import com.hp.jipp.encoding.IntOrIntRange
 import com.hp.jipp.encoding.IppInputStream
 import com.hp.jipp.encoding.IppOutputStream
 import com.hp.jipp.encoding.IppPacket
@@ -17,8 +19,12 @@ import com.hp.jipp.encoding.MutableAttributeGroup
 import com.hp.jipp.encoding.Resolution
 import com.hp.jipp.encoding.ResolutionUnit
 import com.hp.jipp.encoding.Tag
+import com.hp.jipp.model.Finishing
 import com.hp.jipp.model.JobState
+import com.hp.jipp.model.MediaColDatabase
 import com.hp.jipp.model.Operation
+import com.hp.jipp.model.Orientation
+import com.hp.jipp.model.PrintQuality
 import com.hp.jipp.model.PrinterState
 import com.hp.jipp.model.PrinterStateReason
 import com.hp.jipp.model.Status
@@ -159,23 +165,24 @@ class IppServer(
                 val ippInputStream = IppInputStream(ByteArrayInputStream(bodyData))
                 val ippRequestPacket = ippInputStream.readPacket()
 
+                val version = ippRequestPacket.versionNumber
                 val operation = ippRequestPacket.operation
                 val requestId = ippRequestPacket.requestId
 
                 when (operation) {
                     Operation.getPrinterAttributes -> {
-                        logger("[IPP] Get-Printer-Attributes request from $clientIp")
-                        sendGetPrinterAttributesResponse(socket, requestId)
+                        logger("[IPP] Get-Printer-Attributes request (req-id=$requestId, v=$version) from $clientIp")
+                        sendGetPrinterAttributesResponse(socket, version, requestId)
                     }
                     Operation.validateJob -> {
-                        logger("[IPP] Validate-Job request from $clientIp")
-                        sendSimpleIppResponse(socket, requestId, Status.successfulOk)
+                        logger("[IPP] Validate-Job request (req-id=$requestId, v=$version) from $clientIp")
+                        sendSimpleIppResponse(socket, version, requestId, Status.successfulOk)
                     }
                     Operation.printJob, Operation.sendDocument -> {
                         val jobId = jobIdCounter.getAndIncrement()
-                        logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes) from $clientIp")
+                        logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
 
-                        sendPrintJobResponse(socket, requestId, jobId)
+                        sendPrintJobResponse(socket, version, requestId, jobId)
 
                         // Document payload follows the IPP packet
                         val docStart = findByteSequence(bodyData, "%PDF-".toByteArray())
@@ -190,12 +197,12 @@ class IppServer(
                         }
                     }
                     Operation.getJobAttributes -> {
-                        logger("[IPP] Get-Job-Attributes request from $clientIp")
-                        sendGetJobAttributesResponse(socket, requestId)
+                        logger("[IPP] Get-Job-Attributes request (req-id=$requestId, v=$version) from $clientIp")
+                        sendGetJobAttributesResponse(socket, version, requestId)
                     }
                     else -> {
-                        logger("[IPP] Operation $operation requested from $clientIp")
-                        sendSimpleIppResponse(socket, requestId, Status.successfulOk)
+                        logger("[IPP] Operation $operation requested (req-id=$requestId, v=$version) from $clientIp")
+                        sendSimpleIppResponse(socket, version, requestId, Status.successfulOk)
                     }
                 }
 
@@ -228,8 +235,10 @@ class IppServer(
         return 0
     }
 
-    private fun sendGetPrinterAttributesResponse(socket: Socket, requestId: Int) {
+    private fun sendGetPrinterAttributesResponse(socket: Socket, version: Int, requestId: Int) {
         val printerUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print")
+        val printerMoreInfo = URI("http://${getLocalIpAddress()}:$PORT/")
+        val printerUuid = URI("urn:uuid:e5b02130-1c4b-9a99-000000000001")
 
         val opGroup = MutableAttributeGroup(
             Tag.operationAttributes,
@@ -237,6 +246,18 @@ class IppServer(
                 Types.attributesCharset.of("utf-8"),
                 Types.attributesNaturalLanguage.of("en")
             )
+        )
+
+        val mediaSize = MediaColDatabase.MediaSize(
+            xDimension = IntOrIntRange(10160),
+            yDimension = IntOrIntRange(15240)
+        )
+        val mediaColDatabase = MediaColDatabase(
+            mediaSize = mediaSize,
+            mediaTopMargin = 0,
+            mediaBottomMargin = 0,
+            mediaLeftMargin = 0,
+            mediaRightMargin = 0
         )
 
         val printerGroup = MutableAttributeGroup(
@@ -257,17 +278,41 @@ class IppServer(
                     Operation.getJobAttributes,
                     Operation.getPrinterAttributes
                 ),
-                Types.documentFormatSupported.of("application/pdf", "image/png", "image/jpeg", "application/octet-stream"),
+                Types.documentFormatSupported.of(
+                    "application/pdf",
+                    "image/pwg-raster",
+                    "image/png",
+                    "image/jpeg",
+                    "application/octet-stream"
+                ),
                 Types.documentFormatDefault.of("application/pdf"),
+                Types.pwgRasterDocumentResolutionSupported.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
+                Types.pwgRasterDocumentSheetBack.of("normal"),
+                Types.pwgRasterDocumentTypeSupported.of("black_1"),
+                Types.copiesDefault.of(1),
+                Types.copiesSupported.of(IntRange(1, 99)),
+                Types.orientationRequestedDefault.of(Orientation.portrait),
+                Types.orientationRequestedSupported.of(Orientation.portrait),
+                Types.printQualityDefault.of(PrintQuality.normal),
+                Types.printQualitySupported.of(PrintQuality.normal),
+                Types.sidesDefault.of("one-sided"),
+                Types.sidesSupported.of("one-sided"),
+                Types.finishingsDefault.of(Finishing.none),
+                Types.finishingsSupported.of(Finishing.none),
+                Types.outputBinDefault.of("face-down"),
+                Types.outputBinSupported.of("face-down"),
                 Types.mediaSupported.of("oe_4x6-label_4x6in", "na_index-4x6_4x6in", "custom_min_4x6in"),
                 Types.mediaDefault.of("oe_4x6-label_4x6in"),
                 Types.mediaReady.of("oe_4x6-label_4x6in"),
+                Types.mediaColDatabase.of(mediaColDatabase),
                 Types.printerResolutionSupported.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
                 Types.printerResolutionDefault.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
                 Types.printerName.of("Rollo Printer"),
                 Types.printerInfo.of("Rollo Thermal Printer 4x6"),
                 Types.printerLocation.of("Local Network"),
                 Types.printerMakeAndModel.of("Rollo Thermal Printer 4x6"),
+                Types.printerMoreInfo.of(printerMoreInfo),
+                Types.printerUuid.of(printerUuid),
                 Types.printerUriSupported.of(printerUri),
                 Types.uriAuthenticationSupported.of("none"),
                 Types.uriSecuritySupported.of("none"),
@@ -278,11 +323,16 @@ class IppServer(
             )
         )
 
-        val responsePacket = IppPacket(Status.successfulOk, requestId, opGroup, printerGroup)
+        val responsePacket = IppPacket(
+            versionNumber = version,
+            code = Status.successfulOk.code,
+            requestId = requestId,
+            attributeGroups = listOf(opGroup, printerGroup)
+        )
         sendIppPacketResponse(socket, responsePacket)
     }
 
-    private fun sendPrintJobResponse(socket: Socket, requestId: Int, jobId: Int) {
+    private fun sendPrintJobResponse(socket: Socket, version: Int, requestId: Int, jobId: Int) {
         val jobUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print/$jobId")
 
         val opGroup = MutableAttributeGroup(
@@ -302,11 +352,16 @@ class IppServer(
             )
         )
 
-        val responsePacket = IppPacket(Status.successfulOk, requestId, opGroup, jobGroup)
+        val responsePacket = IppPacket(
+            versionNumber = version,
+            code = Status.successfulOk.code,
+            requestId = requestId,
+            attributeGroups = listOf(opGroup, jobGroup)
+        )
         sendIppPacketResponse(socket, responsePacket)
     }
 
-    private fun sendGetJobAttributesResponse(socket: Socket, requestId: Int) {
+    private fun sendGetJobAttributesResponse(socket: Socket, version: Int, requestId: Int) {
         val opGroup = MutableAttributeGroup(
             Tag.operationAttributes,
             listOf(
@@ -322,11 +377,16 @@ class IppServer(
             )
         )
 
-        val responsePacket = IppPacket(Status.successfulOk, requestId, opGroup, jobGroup)
+        val responsePacket = IppPacket(
+            versionNumber = version,
+            code = Status.successfulOk.code,
+            requestId = requestId,
+            attributeGroups = listOf(opGroup, jobGroup)
+        )
         sendIppPacketResponse(socket, responsePacket)
     }
 
-    private fun sendSimpleIppResponse(socket: Socket, requestId: Int, status: Status) {
+    private fun sendSimpleIppResponse(socket: Socket, version: Int, requestId: Int, status: Status) {
         val opGroup = MutableAttributeGroup(
             Tag.operationAttributes,
             listOf(
@@ -335,7 +395,12 @@ class IppServer(
             )
         )
 
-        val responsePacket = IppPacket(status, requestId, opGroup)
+        val responsePacket = IppPacket(
+            versionNumber = version,
+            code = status.code,
+            requestId = requestId,
+            attributeGroups = listOf(opGroup)
+        )
         sendIppPacketResponse(socket, responsePacket)
     }
 

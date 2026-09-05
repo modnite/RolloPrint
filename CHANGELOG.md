@@ -4,6 +4,11 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.1.2` — September 3, 2026 at 3:00 PM
+- **Strict RFC 8011 Request ID & Version Echoing**: Reads 32-bit `request-id` and 16-bit `version-number` from incoming IPP requests and echoes them back in the IPP response headers.
+- **Added Mandatory PWG-Raster Descriptors**: Added `image/pwg-raster` to `document-format-supported`, `pwg-raster-document-resolution-supported` (`203dpi`), `pwg-raster-document-sheet-back` (`normal`), and `pwg-raster-document-type-supported` (`black_1`).
+- **Added Missing IPP 2.0 Attributes & Collection**: Added `copies-default` (`1`), `copies-supported` (`1-99`), `orientation-requested-default` (`3`), `orientation-requested-supported` (`[3]`), `print-quality-default` (`4`), `print-quality-supported` (`[4]`), `sides-default` (`one-sided`), `sides-supported` (`["one-sided"]`), `finishings-default` (`3`), `finishings-supported` (`[3]`), `output-bin-default` (`face-down`), `output-bin-supported` (`["face-down"]`), `printer-more-info`, `printer-uuid`, and `media-col-database` collection (`x-dimension=10160`, `y-dimension=15240`).
+
 ### `v1.1.1` — September 3, 2026 at 2:00 PM
 - **Integrated HP `jipp-core` IPP Engine (`com.hp.jipp:jipp-core:0.7.18`)**: Replaced custom IPP response serializer with HP's official, production-grade IPP Everywhere library. HP `jipp-core` guarantees 100% PWG 5100.14 / RFC 8010 compliant binary IPP frames.
 - **HTTP/1.1 Expect 100-Continue Handshake**: Handles `Expect: 100-continue` headers from Windows IPP and Linux CUPS clients automatically.
