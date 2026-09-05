@@ -4,6 +4,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v2.0.0` — September 4, 2026 at 1:00 PM
+- **Single-Action Print Queue Card**: Removed redundant "Clear queue" button from the main dashboard card (`cardQueue`), leaving a single prominent "View queue" button. Gives the card title "Print queue" 80%+ width so it never truncates into `Print qu...`.
+- **Equal-Width Dialog Action Buttons**: Applied `layout_weight="1"` and `0dp` width to all 3 bottom buttons (`Print all`, `Clear all`, `Done`) in `dialog_queue_manager.xml`. Completely eliminates vertical pill button deformation.
+- **Top-Level App Theme Section**: Positioned "App theme" as Section 1 at the top of the Settings popup with smooth expand/collapse animations.
+- **Unified Material 3 Button Design**: Standardized all buttons across the application (Outlined & Filled Material 3 buttons), eliminating floating text-only buttons for consistent visual aesthetics across portrait, landscape, and Samsung DeX desktop modes.
+
 ### `v1.9.3` — September 4, 2026 at 11:45 AM
 - **Dialog Button Layout Equalization**: Applied `layout_weight="1"` and `0dp` width to all 3 bottom buttons in `dialog_queue_manager.xml`. Solves vertical pill button deformation on the "Done" button.
 - **Queue Manager Card Title Layout**: Adjusted button margins and horizontal width in `cardQueue` (`activity_main.xml`), ensuring "Print queue" is never truncated with ellipses (`Print qu...`).
@@ -59,6 +65,12 @@ All notable changes to the **RolloPrint** application are documented in this fil
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v2.0.0` — September 4, 2026 at 1:00 PM
+- **Single-Action Print Queue Card**: Removed redundant "Clear queue" button from the main dashboard card (`cardQueue`), leaving a single prominent "View queue" button. Gives the card title "Print queue" 80%+ width so it never truncates into `Print qu...`.
+- **Equal-Width Dialog Action Buttons**: Applied `layout_weight="1"` and `0dp` width to all 3 bottom buttons (`Print all`, `Clear all`, `Done`) in `dialog_queue_manager.xml`. Completely eliminates vertical pill button deformation.
+- **Top-Level App Theme Section**: Positioned "App theme" as Section 1 at the top of the Settings popup with smooth expand/collapse animations.
+- **Unified Material 3 Button Design**: Standardized all buttons across the application (Outlined & Filled Material 3 buttons), eliminating floating text-only buttons for consistent visual aesthetics across portrait, landscape, and Samsung DeX desktop modes.
 
 ### `v1.9.3` — September 4, 2026 at 11:45 AM
 - **Dialog Button Layout Equalization**: Applied `layout_weight="1"` and `0dp` width to all 3 bottom buttons in `dialog_queue_manager.xml`. Solves vertical pill button deformation on the "Done" button.

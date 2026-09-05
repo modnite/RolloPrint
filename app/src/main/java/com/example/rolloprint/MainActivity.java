@@ -150,7 +150,6 @@ public class MainActivity extends AppCompatActivity {
         switchServer = findViewById(R.id.switchServer);
         tvServerStatus = findViewById(R.id.tvServerStatus);
         tvQueueStatus = findViewById(R.id.tvQueueStatus);
-        Button btnClearQueue = findViewById(R.id.btnClearQueue);
         Button btnViewQueue = findViewById(R.id.btnViewQueue);
         Button btnDumpLogs = findViewById(R.id.btnDumpLogs);
         tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
@@ -208,11 +207,6 @@ public class MainActivity extends AppCompatActivity {
                     return null;
                 }
         );
-
-        btnClearQueue.setOnClickListener(v -> {
-            jobQueueManager.clearQueue();
-            printManager.clearHardwareQueue();
-        });
 
         if (btnViewQueue != null) {
             btnViewQueue.setOnClickListener(v -> {
@@ -277,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.9.3";
+        String appVersion = "2.0.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
