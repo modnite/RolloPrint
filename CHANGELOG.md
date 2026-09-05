@@ -4,6 +4,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.7.1` — September 4, 2026 at 5:00 AM
+- **Universal Etherpad / Pastebin Multipart Dumper**: Replaced plain REST URL posting with Etherpad multipart form-data import (`/p/<padID>/import`). Instantly uploads and overwrites pad text on all public/private Etherpad instances without requiring API keys or triggering HTTP 401/404 errors. Added an optional API Key setting field in Settings for authenticated instances.
+- **Immediate Startup Hardware Status Check**: Triggers an instant hardware status check (`pollHardwareStatus()`) on app launch (`onCreate()`), updating the header status badge (`● Hardware: Ready` vs `● Hardware: Out of Paper`) in **0.1 seconds** without waiting for the first 3-second background poll.
+
 ### `v1.7.0` — September 4, 2026 at 4:00 AM
 - **Held Jobs Queue Manager & Interactive Modal**: Added a "View Queue" button on the Print Queue card launching a full Queue Manager modal (`QueueManagerDialogFragment`). Displays individual pending/held jobs with client names, job status, a "Preview" action to visually inspect rendered label bitmaps, a "Print Now" action, and individual job deletion.
 - **In-App GitHub Auto-Update Checker (`AppUpdateManager`)**: Built an in-app GitHub Release update engine that checks `https://api.github.com/repos/modnite/RolloPrint/releases/latest` every 15 minutes (and on-demand via a "Check for Updates" button in Settings). Automatically prompts with release notes and installs updated APKs seamlessly via `FileProvider`.
@@ -15,6 +19,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v1.7.1` — September 4, 2026 at 5:00 AM
+- **Universal Etherpad / Pastebin Multipart Dumper**: Replaced plain REST URL posting with Etherpad multipart form-data import (`/p/<padID>/import`). Instantly uploads and overwrites pad text on all public/private Etherpad instances without requiring API keys or triggering HTTP 401/404 errors. Added an optional API Key setting field in Settings for authenticated instances.
+- **Immediate Startup Hardware Status Check**: Triggers an instant hardware status check (`pollHardwareStatus()`) on app launch (`onCreate()`), updating the header status badge (`● Hardware: Ready` vs `● Hardware: Out of Paper`) in **0.1 seconds** without waiting for the first 3-second background poll.
 
 ### `v1.7.0` — September 4, 2026 at 4:00 AM
 - **Held Jobs Queue Manager & Interactive Modal**: Added a "View Queue" button on the Print Queue card launching a full Queue Manager modal (`QueueManagerDialogFragment`). Displays individual pending/held jobs with client names, job status, a "Preview" action to visually inspect rendered label bitmaps, a "Print Now" action, and individual job deletion.

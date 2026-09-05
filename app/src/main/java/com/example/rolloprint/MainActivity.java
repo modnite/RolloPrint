@@ -277,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.7.0";
+        String appVersion = "1.7.1";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -286,6 +286,9 @@ public class MainActivity extends AppCompatActivity {
 
         log("RolloPrint v" + appVersion + " Loaded.");
         log("Ready to print 4x6 PDF labels.");
+
+        // Immediately poll hardware status on launch so status badge updates in 0.1s
+        printManager.runPrinterDiagnosticsAsync();
 
         appUpdateManager = new AppUpdateManager(
                 this,
@@ -313,17 +316,22 @@ public class MainActivity extends AppCompatActivity {
         MaterialSwitch switchLocal = dialogView.findViewById(R.id.switchLocalPreviewDialog);
         MaterialSwitch switchNetwork = dialogView.findViewById(R.id.switchNetworkPreviewDialog);
         TextInputEditText etEtherpadUrl = dialogView.findViewById(R.id.etEtherpadUrl);
+        TextInputEditText etEtherpadApiKey = dialogView.findViewById(R.id.etEtherpadApiKey);
         Button btnDiagnostics = dialogView.findViewById(R.id.btnDiagnostics);
         Button btnCheckUpdates = dialogView.findViewById(R.id.btnCheckUpdates);
 
         boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
         boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
         String savedEtherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "http://192.168.100.208:9001/p/notepad");
+        String savedEtherpadApiKey = prefs.getString("PREF_ETHERPAD_API_KEY", "");
 
         switchLocal.setChecked(showLocal);
         switchNetwork.setChecked(showNetwork);
         if (etEtherpadUrl != null) {
             etEtherpadUrl.setText(savedEtherpadUrl);
+        }
+        if (etEtherpadApiKey != null) {
+            etEtherpadApiKey.setText(savedEtherpadApiKey);
         }
 
         switchLocal.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -361,6 +369,10 @@ public class MainActivity extends AppCompatActivity {
                             log("[SETTINGS] Etherpad Pastebin URL set to: " + newUrl);
                         }
                     }
+                    if (etEtherpadApiKey != null && etEtherpadApiKey.getText() != null) {
+                        String newApiKey = etEtherpadApiKey.getText().toString().trim();
+                        prefs.edit().putString("PREF_ETHERPAD_API_KEY", newApiKey).apply();
+                    }
                 })
                 .show();
     }
@@ -384,6 +396,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void dumpActivityLogsToEtherpad() {
         String etherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "http://192.168.100.208:9001/p/notepad");
+        String apiKey = prefs.getString("PREF_ETHERPAD_API_KEY", "").trim();
         String logContent = tvLog.getText().toString();
 
         if (logContent.trim().isEmpty()) {
@@ -407,58 +420,72 @@ public class MainActivity extends AppCompatActivity {
                 String path = uri.getPath() != null ? uri.getPath() : "/p/notepad";
                 String padId = path.startsWith("/p/") ? path.substring(3) : "notepad";
 
-                String apiUrl = scheme + "://" + host + ":" + port + "/api/1/setText";
+                if (!apiKey.isEmpty()) {
+                    String apiUrl = scheme + "://" + host + ":" + port + "/api/1.2.14/setText";
+                    URL url = new URL(apiUrl);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setDoOutput(true);
+                    conn.setConnectTimeout(5000);
+                    conn.setReadTimeout(5000);
+                    conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 
-                URL url = new URL(apiUrl);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
-                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                    String postData = "apikey=" + URLEncoder.encode(apiKey, "UTF-8") +
+                            "&padID=" + URLEncoder.encode(padId, "UTF-8") +
+                            "&text=" + URLEncoder.encode(logContent, "UTF-8");
 
-                String postData = "padID=" + URLEncoder.encode(padId, "UTF-8") +
-                        "&text=" + URLEncoder.encode(logContent, "UTF-8");
+                    try (OutputStream os = conn.getOutputStream()) {
+                        os.write(postData.getBytes(StandardCharsets.UTF_8));
+                        os.flush();
+                    }
 
-                try (OutputStream os = conn.getOutputStream()) {
-                    os.write(postData.getBytes(StandardCharsets.UTF_8));
-                    os.flush();
+                    int responseCode = conn.getResponseCode();
+                    if (responseCode == 200) {
+                        log("[ETHERPAD] SUCCESS: Activity log dumped to Etherpad via API key (" + padId + ").");
+                        return;
+                    }
                 }
 
-                int responseCode = conn.getResponseCode();
-                if (responseCode == 200) {
-                    log("[ETHERPAD] SUCCESS: Activity log dumped to Etherpad (" + padId + ").");
-                } else {
-                    log("[ETHERPAD] WARNING: Etherpad returned HTTP " + responseCode + ". Trying direct pad POST...");
-                    postDirectToPad(cleanUrl, logContent);
-                }
+                // Multipart Form-Data Import to /p/notepad/import (Works on all Etherpad instances without API key)
+                String importUrl = scheme + "://" + host + ":" + port + "/p/" + padId + "/import";
+                postMultipartFileToEtherpad(importUrl, padId, logContent);
+
             } catch (Exception e) {
-                log("[ETHERPAD] API dump notice (" + e.getMessage() + "). Trying direct pad POST...");
-                postDirectToPad(etherpadUrl, logContent);
+                log("[ETHERPAD] Dump notice: " + e.getMessage());
             }
         });
     }
 
-    private void postDirectToPad(String padUrl, String logContent) {
+    private void postMultipartFileToEtherpad(String importUrl, String padId, String logContent) {
         try {
-            URL url = new URL(padUrl);
+            String boundary = "---EtherpadBoundary" + System.currentTimeMillis();
+            URL url = new URL(importUrl);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
-            String postData = "text=" + URLEncoder.encode(logContent, "UTF-8");
             try (OutputStream os = conn.getOutputStream()) {
-                os.write(postData.getBytes(StandardCharsets.UTF_8));
+                String header = "--" + boundary + "\r\n" +
+                        "Content-Disposition: form-data; name=\"file\"; filename=\"" + padId + ".txt\"\r\n" +
+                        "Content-Type: text/plain\r\n\r\n";
+                os.write(header.getBytes(StandardCharsets.UTF_8));
+                os.write(logContent.getBytes(StandardCharsets.UTF_8));
+                String footer = "\r\n--" + boundary + "--\r\n";
+                os.write(footer.getBytes(StandardCharsets.UTF_8));
                 os.flush();
             }
 
             int responseCode = conn.getResponseCode();
-            log("[ETHERPAD] Direct pad POST completed with HTTP " + responseCode);
+            if (responseCode == 200 || responseCode == 302 || responseCode == 303) {
+                log("[ETHERPAD] SUCCESS: Activity log dumped to Etherpad pad '/p/" + padId + "'.");
+            } else {
+                log("[ETHERPAD] WARNING: Etherpad import returned HTTP " + responseCode);
+            }
         } catch (Exception e) {
-            log("[ETHERPAD] Direct pad POST notice: " + e.getMessage());
+            log("[ETHERPAD] Direct import notice: " + e.getMessage());
         }
     }
 
