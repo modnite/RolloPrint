@@ -189,6 +189,14 @@
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnViewQueue"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/view_queue"
+                android:layout_marginEnd="4dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnClearQueue"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"

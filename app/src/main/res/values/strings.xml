@@ -17,7 +17,9 @@
     <string name="print_queue">Print Queue</string>
     <string name="queue_empty">Queue: Empty</string>
     <string name="clear_queue">Clear Queue</string>
+    <string name="view_queue">View Queue</string>
     <string name="expand_activity_log">Expand Activity Log</string>
     <string name="dump_to_pastebin">Dump to Pastebin</string>
     <string name="etherpad_url_hint">Etherpad / Pastebin URL</string>
+    <string name="check_updates">Check for Updates</string>
 </resources>

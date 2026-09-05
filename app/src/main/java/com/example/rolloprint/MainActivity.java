@@ -52,6 +52,7 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity {
     private UsbPrintManager printManager;
     private JobQueueManager jobQueueManager;
+    private AppUpdateManager appUpdateManager;
     private TextView tvLog;
     private ScrollView scrollViewLog;
     private Bitmap lastRenderedBitmap;
@@ -150,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
         tvServerStatus = findViewById(R.id.tvServerStatus);
         tvQueueStatus = findViewById(R.id.tvQueueStatus);
         Button btnClearQueue = findViewById(R.id.btnClearQueue);
+        Button btnViewQueue = findViewById(R.id.btnViewQueue);
         Button btnDumpLogs = findViewById(R.id.btnDumpLogs);
         tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
 
@@ -212,6 +214,19 @@ public class MainActivity extends AppCompatActivity {
             printManager.clearHardwareQueue();
         });
 
+        if (btnViewQueue != null) {
+            btnViewQueue.setOnClickListener(v -> {
+                QueueManagerDialogFragment queueDialog = QueueManagerDialogFragment.Companion.newInstance(
+                        jobQueueManager,
+                        job -> {
+                            showPrintPreview(job.getBitmap());
+                            return null;
+                        }
+                );
+                queueDialog.show(getSupportFragmentManager(), "QueueManager");
+            });
+        }
+
         View layoutLogHeaderClickable = findViewById(R.id.layoutLogHeaderClickable);
         ImageView ivLogExpandArrow = findViewById(R.id.ivLogExpandArrow);
 
@@ -262,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         
-        String appVersion = "1.6.0";
+        String appVersion = "1.7.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -271,6 +286,20 @@ public class MainActivity extends AppCompatActivity {
 
         log("RolloPrint v" + appVersion + " Loaded.");
         log("Ready to print 4x6 PDF labels.");
+
+        appUpdateManager = new AppUpdateManager(
+                this,
+                appVersion,
+                text -> {
+                    log(text);
+                    return null;
+                },
+                (latestTag, releaseNotes, apkUrl) -> {
+                    runOnUiThread(() -> showUpdateAvailableDialog(latestTag, releaseNotes, apkUrl));
+                    return null;
+                }
+        );
+        appUpdateManager.startPeriodicCheck();
 
         // Proactively request all runtime permissions on first open
         checkAndRequestAllPermissions();
@@ -285,6 +314,7 @@ public class MainActivity extends AppCompatActivity {
         MaterialSwitch switchNetwork = dialogView.findViewById(R.id.switchNetworkPreviewDialog);
         TextInputEditText etEtherpadUrl = dialogView.findViewById(R.id.etEtherpadUrl);
         Button btnDiagnostics = dialogView.findViewById(R.id.btnDiagnostics);
+        Button btnCheckUpdates = dialogView.findViewById(R.id.btnCheckUpdates);
 
         boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
         boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
@@ -313,6 +343,14 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        if (btnCheckUpdates != null) {
+            btnCheckUpdates.setOnClickListener(v -> {
+                if (appUpdateManager != null) {
+                    appUpdateManager.checkForUpdates(false);
+                }
+            });
+        }
+
         new MaterialAlertDialogBuilder(this)
                 .setView(dialogView)
                 .setPositiveButton(R.string.done, (dialog, which) -> {
@@ -324,6 +362,23 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 })
+                .show();
+    }
+
+    private void showUpdateAvailableDialog(String latestTag, String releaseNotes, String apkUrl) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("RolloPrint Update Available (v" + latestTag + ")")
+                .setMessage(releaseNotes)
+                .setPositiveButton("Update Now", (dialog, which) -> {
+                    log("[UPDATE] Downloading RolloPrint v" + latestTag + "...");
+                    if (appUpdateManager != null) {
+                        appUpdateManager.downloadAndInstallApk(apkUrl, msg -> {
+                            log(msg);
+                            return null;
+                        });
+                    }
+                })
+                .setNegativeButton("Ignore", null)
                 .show();
     }
 

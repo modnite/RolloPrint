@@ -4,12 +4,22 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.7.0` — September 4, 2026 at 4:00 AM
+- **Held Jobs Queue Manager & Interactive Modal**: Added a "View Queue" button on the Print Queue card launching a full Queue Manager modal (`QueueManagerDialogFragment`). Displays individual pending/held jobs with client names, job status, a "Preview" action to visually inspect rendered label bitmaps, a "Print Now" action, and individual job deletion.
+- **In-App GitHub Auto-Update Checker (`AppUpdateManager`)**: Built an in-app GitHub Release update engine that checks `https://api.github.com/repos/modnite/RolloPrint/releases/latest` every 15 minutes (and on-demand via a "Check for Updates" button in Settings). Automatically prompts with release notes and installs updated APKs seamlessly via `FileProvider`.
+- **Enabled Local Cleartext Traffic**: Added `android:usesCleartextTraffic="true"` to `AndroidManifest.xml` enabling instant HTTP activity log dumps to local Etherpad pastebins (`http://192.168.100.208:9001/p/notepad`).
+
 ### `v1.6.0` — September 4, 2026 at 3:00 AM
 - **Etherpad / Pastebin Activity Log Dumper**: Added a "Dump to Pastebin" action button under the Activity Log console and an Etherpad / Pastebin URL configuration field in the Settings menu (`PREF_ETHERPAD_URL`, defaulting to `http://192.168.100.208:9001/p/notepad`). Easily posts activity logs directly to your Etherpad instance with a single tap.
 
 ### `v1.5.1` — September 4, 2026 at 2:00 AM
 - **Simultaneous Job Progress & Hardware State Logging**: Logs the exact USB hardware state (`READY`, `OUT_OF_PAPER`, `HEAD_OPEN`) simultaneously alongside USB transfer progress and IPP job ingestion events for live diagnostic visibility.
 - **Real-Time State Transition Logs**: Emits `[HARDWARE_STATE]` logs whenever the Rollo hardware transitions between states (e.g. `[READY]`, `[OUT_OF_PAPER]`).
+
+### `v1.7.0` — September 4, 2026 at 4:00 AM
+- **Held Jobs Queue Manager & Interactive Modal**: Added a "View Queue" button on the Print Queue card launching a full Queue Manager modal (`QueueManagerDialogFragment`). Displays individual pending/held jobs with client names, job status, a "Preview" action to visually inspect rendered label bitmaps, a "Print Now" action, and individual job deletion.
+- **In-App GitHub Auto-Update Checker (`AppUpdateManager`)**: Built an in-app GitHub Release update engine that checks `https://api.github.com/repos/modnite/RolloPrint/releases/latest` every 15 minutes (and on-demand via a "Check for Updates" button in Settings). Automatically prompts with release notes and installs updated APKs seamlessly via `FileProvider`.
+- **Enabled Local Cleartext Traffic**: Added `android:usesCleartextTraffic="true"` to `AndroidManifest.xml` enabling instant HTTP activity log dumps to local Etherpad pastebins (`http://192.168.100.208:9001/p/notepad`).
 
 ### `v1.6.0` — September 4, 2026 at 3:00 AM
 - **Etherpad / Pastebin Activity Log Dumper**: Added a "Dump to Pastebin" action button under the Activity Log console and an Etherpad / Pastebin URL configuration field in the Settings menu (`PREF_ETHERPAD_URL`, defaulting to `http://192.168.100.208:9001/p/notepad`). Easily posts activity logs directly to your Etherpad instance with a single tap.
