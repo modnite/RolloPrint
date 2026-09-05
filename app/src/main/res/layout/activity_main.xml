@@ -262,7 +262,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="240dp"
                 android:background="?attr/colorSurfaceVariant"
-                android:padding="8dp"
+                android:padding="12dp"
+                android:clipToPadding="false"
                 android:visibility="gone">
 
                 <TextView
@@ -271,6 +272,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="monospace"
                     android:textIsSelectable="true"
+                    android:paddingBottom="24dp"
                     android:text=""
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12sp" />
