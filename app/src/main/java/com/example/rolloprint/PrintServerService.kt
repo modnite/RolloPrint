@@ -81,12 +81,13 @@ class PrintServerService : Service() {
 
     fun initializeServer(
         usbPrintManager: UsbPrintManager,
+        jobQueueManager: JobQueueManager,
         logger: (String) -> Unit,
         onStatusChanged: (Boolean, String?) -> Unit,
         onNetworkBitmapRendered: ((Bitmap) -> Unit)? = null
     ) {
         if (ippServer == null) {
-            ippServer = IppServer(this, usbPrintManager, { logMsg ->
+            ippServer = IppServer(this, usbPrintManager, jobQueueManager, { logMsg ->
                 logger(logMsg)
             }, { running, ip ->
                 isServerRunning = running

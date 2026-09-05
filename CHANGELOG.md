@@ -4,6 +4,10 @@ All notable changes to the **RolloPrint** application are documented in this fil
 
 ---
 
+### `v1.4.2` — September 3, 2026 at 11:00 PM
+- **Real-Time Out-of-Paper Hardware Detection (`queryPrinterStatus`)**: Added TSPL status query (`~!S`) in `UsbPrintManager` before streaming bitmap payloads. If the printer is out of paper (Red LED), `UsbPrintManager` logs `"[HARDWARE] Out of Paper detected"` and holds the job in our app's queue without sending bytes to the Rollo USB endpoint.
+- **Unified Network IPP Queue Integration**: Routed IPP network jobs through `JobQueueManager`. Incoming network jobs update the UI Print Queue Card in real-time (`Queue: X job(s) waiting`) and can be cleared using the "Clear Queue" button.
+
 ### `v1.4.1` — September 3, 2026 at 10:30 PM
 - **Rollo Hardware Memory Buffer Purge (`clearHardwareBufferAsync`)**: Updated the "Clear Queue" button to send TSPL soft-reset and buffer purge commands (`~@`, `CLS`) directly to the Rollo printer over USB. This clears the printer's internal RAM buffer so old jobs do not print out when paper is reloaded.
 

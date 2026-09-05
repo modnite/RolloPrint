@@ -51,6 +51,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class IppServer(
     private val context: Context,
     private val printManager: UsbPrintManager,
+    private val jobQueueManager: JobQueueManager,
     private val logger: (String) -> Unit,
     private val onStatusChanged: (Boolean, String?) -> Unit,
     private val onNetworkBitmapRendered: ((Bitmap) -> Unit)? = null
@@ -522,7 +523,7 @@ class IppServer(
                 val pdfBytes = data.copyOfRange(pdfStart, data.size)
                 FileOutputStream(tempPdfFile).use { it.write(pdfBytes) }
                 logger("[IPP] Saved PDF document (${pdfBytes.size} bytes) for Job #$jobId")
-                ingestPdfToLocalPrint(tempPdfFile)
+                ingestPdfToLocalPrint(tempPdfFile, jobId)
                 return
             }
 
@@ -539,7 +540,7 @@ class IppServer(
                 if (bitmap != null) {
                     logger("[IPP] Extracted Image document for Job #$jobId. Converting to 4x6 PDF...")
                     createPdfFromBitmap(bitmap, tempPdfFile)
-                    ingestPdfToLocalPrint(tempPdfFile)
+                    ingestPdfToLocalPrint(tempPdfFile, jobId)
                     return
                 }
             }
@@ -549,14 +550,14 @@ class IppServer(
             if (textContent.startsWith("#PDF-BANNER") || textContent.contains("default-testpage.pdf")) {
                 logger("[IPP] Received CUPS Test Page Banner. Rendering RolloPrint 4x6 Test Label...")
                 createCupsTestPagePdf(tempPdfFile)
-                ingestPdfToLocalPrint(tempPdfFile)
+                ingestPdfToLocalPrint(tempPdfFile, jobId)
                 return
             }
 
             // 4. Fallback: Text/PostScript stream -> Convert to 4x6 PDF
             logger("[IPP] Converting Text/PostScript stream to 4x6 PDF for Job #$jobId...")
             createPdfFromText(textContent, tempPdfFile)
-            ingestPdfToLocalPrint(tempPdfFile)
+            ingestPdfToLocalPrint(tempPdfFile, jobId)
 
         } catch (e: Exception) {
             logger("[IPP] ERROR processing IPP job #$jobId: ${e.message}")
@@ -678,7 +679,7 @@ class IppServer(
         pdfDoc.close()
     }
 
-    private fun ingestPdfToLocalPrint(pdfFile: File) {
+    private fun ingestPdfToLocalPrint(pdfFile: File, jobId: Int) {
         val uri = Uri.fromFile(pdfFile)
         val bitmap = printManager.renderPdfToBitmap(uri)
         if (bitmap != null) {
@@ -686,11 +687,11 @@ class IppServer(
             val showNetworkPreview = prefs.getBoolean("PREF_NETWORK_PREVIEW", false)
 
             if (showNetworkPreview && onNetworkBitmapRendered != null) {
-                logger("[IPP] Displaying Print Preview Dialog for Network Job...")
+                logger("[IPP] Displaying Print Preview Dialog for Network Job #$jobId...")
                 onNetworkBitmapRendered.invoke(bitmap)
             } else {
-                logger("[IPP] PDF converted to 816x1218 bitmap. Streaming directly to Rollo printer...")
-                printManager.printBitmapAsync(bitmap)
+                logger("[IPP] PDF converted to 816x1218 bitmap. Adding Network Job #$jobId to Print Queue...")
+                jobQueueManager.addJob(bitmap, "Network Job #$jobId")
             }
         } else {
             logger("[IPP] ERROR: Local PDF rendering engine failed.")

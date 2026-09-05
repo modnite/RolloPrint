@@ -130,7 +130,6 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
     fun printBitmapAsync(bitmap: Bitmap, onComplete: ((Boolean) -> Unit)? = null) {
         executor.execute {
-            var success = false
             try {
                 val tsplData = generateTsplPayload(bitmap)
                 val device = findRolloDevice()
@@ -145,7 +144,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                     requestPermission(device)
                     onComplete?.invoke(false)
                 } else {
-                    success = executeUsbTransfer(device, tsplData)
+                    val success = executeUsbTransfer(device, tsplData)
                     onComplete?.invoke(success)
                 }
             } catch (e: Exception) {
@@ -186,6 +185,32 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         }
     }
 
+    private fun queryPrinterStatus(connection: UsbDeviceConnection, usbInterface: UsbInterface): Int {
+        try {
+            val endpointOut = (0 until usbInterface.endpointCount)
+                .map { usbInterface.getEndpoint(it) }
+                .find { it.type == UsbConstants.USB_ENDPOINT_XFER_BULK && it.direction == UsbConstants.USB_DIR_OUT }
+
+            val endpointIn = (0 until usbInterface.endpointCount)
+                .map { usbInterface.getEndpoint(it) }
+                .find { it.type == UsbConstants.USB_ENDPOINT_XFER_BULK && it.direction == UsbConstants.USB_DIR_IN }
+
+            if (endpointOut == null || endpointIn == null) return -1
+
+            val statusQueryCmd = "\r\n~!S\r\n".toByteArray(Charsets.US_ASCII)
+            val sent = connection.bulkTransfer(endpointOut, statusQueryCmd, statusQueryCmd.size, 500)
+            if (sent <= 0) return -1
+
+            val response = ByteArray(1)
+            val read = connection.bulkTransfer(endpointIn, response, response.size, 500)
+            if (read <= 0) return -1
+
+            return response[0].toInt() and 0xFF
+        } catch (_: Exception) {
+            return -1
+        }
+    }
+
     private fun findRolloDevice(): UsbDevice? {
         return usbManager.deviceList.values.find { it.vendorId == ROLLO_VID && it.productId == ROLLO_PID }
     }
@@ -210,6 +235,18 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             if (!connection.claimInterface(usbInterface, true)) {
                 logger("ERROR: Interface Busy.")
                 return false
+            }
+
+            // Check hardware paper status BEFORE sending bitmap bytes!
+            val status = queryPrinterStatus(connection, usbInterface)
+            if (status != -1 && status != 0) {
+                if ((status and 0x04) != 0 || (status and 0x02) != 0) {
+                    logger("[HARDWARE] Out of Paper detected (Red LED flashing). Job held in queue.")
+                } else {
+                    logger("[HARDWARE] Printer error/paused (0x${status.toString(16)}). Job held in queue.")
+                }
+                connection.releaseInterface(usbInterface)
+                return false // Hold job in memory queue; do not stream bytes to hardware RAM!
             }
 
             val endpoint = (0 until usbInterface.endpointCount)
