@@ -79,21 +79,30 @@
                             android:id="@+id/rbThemeSystem"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:paddingVertical="10dp"
+                            android:paddingVertical="12dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground"
                             android:text="@string/theme_system" />
 
                         <RadioButton
                             android:id="@+id/rbThemeDark"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:paddingVertical="10dp"
+                            android:paddingVertical="12dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground"
                             android:text="@string/theme_dark" />
 
                         <RadioButton
                             android:id="@+id/rbThemeLight"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:paddingVertical="10dp"
+                            android:paddingVertical="12dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground"
                             android:text="@string/theme_light" />
                     </RadioGroup>
                 </LinearLayout>

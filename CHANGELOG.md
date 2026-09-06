@@ -4,6 +4,11 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.0.3` — September 5, 2026 at 9:30 PM
+- **Pinned Queue Manager Action Buttons**: Re-architected `dialog_queue_manager.xml` with `layout_height="0dp"` and `layout_weight="1"` on `rvQueueJobs`. Action buttons (`Print all`, `Clear all`, `Done`) are permanently pinned at the bottom with full height regardless of how many jobs fill the queue.
+- **TextInput Overlapping Hint Fix**: Removed duplicate edit hints from `TextInputEditText` inside `dialog_settings.xml`. Material 3 `TextInputLayout` floating hints float up smoothly with zero text overlap.
+- **Full-Width Theme Touch Targets**: Expanded `RadioButton` touch targets (`rbThemeSystem`, `rbThemeDark`, `rbThemeLight`) across the full row width with ripple feedback.
+
 ### `v2.0.2` — September 5, 2026 at 9:00 PM
 - **Pinned Dialog Button Bar & Internal List Scrolling**: Re-structured `dialog_queue_manager.xml` using `layout_weight="1"` on `rvQueueJobs`. The bottom action buttons (`Print all`, `Clear all`, `Done`) remain permanently pinned at the bottom with full height regardless of how many jobs populate the queue.
 - **TextInput Overlapping Hint Fix**: Removed duplicate edit hints from `TextInputEditText` inside `dialog_settings.xml`. Material 3 `TextInputLayout` floating hints now animate smoothly without text overlapping.
