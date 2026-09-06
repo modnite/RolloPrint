@@ -35,13 +35,18 @@ class JobQueueManager(
         onQueueJobsChanged?.invoke(jobs)
     }
 
-    fun addJob(bitmap: Bitmap, name: String) {
+    @JvmOverloads
+    fun addJob(bitmap: Bitmap, name: String, forceHold: Boolean = false) {
         val jobId = (1000..9999).random()
-        val job = PrintJob(jobId, bitmap, name, JobStatus.PENDING)
+        val initialStatus = if (forceHold) JobStatus.HELD else JobStatus.PENDING
+        val job = PrintJob(jobId, bitmap, name, initialStatus)
         queue.add(job)
-        logger("[QUEUE] Job '$name' (#$jobId) added to queue. Total in queue: ${queue.size}")
+        val modeStr = if (forceHold) "HELD (manual hold enabled)" else "PENDING"
+        logger("[QUEUE] Job '$name' (#$jobId) added to queue [$modeStr]. Total in queue: ${queue.size}")
         notifyQueueChanged()
-        processNextJob()
+        if (!forceHold) {
+            processNextJob()
+        }
     }
 
     private fun processNextJob() {

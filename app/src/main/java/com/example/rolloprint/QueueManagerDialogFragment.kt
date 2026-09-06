@@ -79,6 +79,13 @@ class QueueManagerDialogFragment : DialogFragment() {
 
         btnToggleSortOrder?.setOnClickListener {
             isOldestFirst = !isOldestFirst
+            if (isOldestFirst) {
+                btnToggleSortOrder.setImageResource(R.drawable.ic_arrow_upward)
+                btnToggleSortOrder.contentDescription = getString(R.string.sort_oldest_first)
+            } else {
+                btnToggleSortOrder.setImageResource(R.drawable.ic_arrow_downward)
+                btnToggleSortOrder.contentDescription = getString(R.string.sort_newest_first)
+            }
             refreshAdapter(jobQueueManager?.getQueuedJobs() ?: emptyList())
         }
 

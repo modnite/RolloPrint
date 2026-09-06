@@ -9,6 +9,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.hardware.usb.UsbManager;
 import android.net.Uri;
@@ -21,8 +22,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -36,10 +35,10 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
-import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -136,6 +135,14 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
+        // Invert status bar & navigation bar icons in Light Mode so they don't wash out
+        boolean isNightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (insetsController != null) {
+            insetsController.setAppearanceLightStatusBars(!isNightMode);
+            insetsController.setAppearanceLightNavigationBars(!isNightMode);
+        }
+
         View mainView = findViewById(R.id.main);
         ViewCompat.setOnApplyWindowInsetsListener(mainView, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(
@@ -176,8 +183,8 @@ public class MainActivity extends AppCompatActivity {
 
         ImageButton btnSettings = findViewById(R.id.btnSettings);
         btnSettings.setOnClickListener(v -> {
-            log("[UI_EVENT] Clicked Settings cog wheel button.");
-            showSettingsDialog();
+            log("[UI_EVENT] Opening Settings Activity.");
+            startActivity(new Intent(this, SettingsActivity.class));
         });
 
         if (btnDumpLogs != null) {
@@ -189,30 +196,6 @@ public class MainActivity extends AppCompatActivity {
 
         printManager = new UsbPrintManager(this, text -> {
             log(text);
-            return null;
-        });
-
-        TextView tvHardwareStatus = findViewById(R.id.tvHardwareStatus);
-
-        printManager.setOnHardwareStateChanged(states -> {
-            runOnUiThread(() -> {
-                if (states.contains(HardwareState.HEAD_OPEN)) {
-                    tvHardwareStatus.setText("● Hardware: Cover Open");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark));
-                } else if (states.contains(HardwareState.OUT_OF_PAPER)) {
-                    tvHardwareStatus.setText("● Hardware: Out of Paper (Red LED)");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
-                } else if (states.contains(HardwareState.READY)) {
-                    tvHardwareStatus.setText("● Hardware: Ready (Green LED)");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark));
-                } else if (states.contains(HardwareState.PRINTING)) {
-                    tvHardwareStatus.setText("● Hardware: Printing...");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
-                } else {
-                    tvHardwareStatus.setText("● Hardware: Disconnected / Unknown");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
-                }
-            });
             return null;
         });
 
@@ -302,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
 
-        String appVersion = "2.3.0";
+        String appVersion = "2.5.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -360,136 +343,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void showSettingsDialog() {
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_settings, null);
-        MaterialSwitch switchLocal = dialogView.findViewById(R.id.switchLocalPreviewDialog);
-        MaterialSwitch switchNetwork = dialogView.findViewById(R.id.switchNetworkPreviewDialog);
-        TextInputEditText etEtherpadUrl = dialogView.findViewById(R.id.etEtherpadUrl);
-        TextInputEditText etEtherpadApiKey = dialogView.findViewById(R.id.etEtherpadApiKey);
-        Button btnDiagnostics = dialogView.findViewById(R.id.btnDiagnostics);
-        Button btnCheckUpdates = dialogView.findViewById(R.id.btnCheckUpdates);
-
-        View headerTheme = dialogView.findViewById(R.id.headerTheme);
-        View containerTheme = dialogView.findViewById(R.id.containerTheme);
-        ImageView ivArrowTheme = dialogView.findViewById(R.id.ivArrowTheme);
-        RadioGroup rgAppTheme = dialogView.findViewById(R.id.rgAppTheme);
-        RadioButton rbThemeSystem = dialogView.findViewById(R.id.rbThemeSystem);
-        RadioButton rbThemeDark = dialogView.findViewById(R.id.rbThemeDark);
-        RadioButton rbThemeLight = dialogView.findViewById(R.id.rbThemeLight);
-
-        View headerPreviewOptions = dialogView.findViewById(R.id.headerPreviewOptions);
-        View containerPreviewOptions = dialogView.findViewById(R.id.containerPreviewOptions);
-        ImageView ivArrowPreview = dialogView.findViewById(R.id.ivArrowPreview);
-
-        View headerEtherpad = dialogView.findViewById(R.id.headerEtherpad);
-        View containerEtherpad = dialogView.findViewById(R.id.containerEtherpad);
-        ImageView ivArrowEtherpad = dialogView.findViewById(R.id.ivArrowEtherpad);
-
-        View headerDiagnostics = dialogView.findViewById(R.id.headerDiagnostics);
-        View containerDiagnostics = dialogView.findViewById(R.id.containerDiagnostics);
-        ImageView ivArrowDiagnostics = dialogView.findViewById(R.id.ivArrowDiagnostics);
-
-        setupCollapsibleSection(headerTheme, containerTheme, ivArrowTheme, "App theme");
-        setupCollapsibleSection(headerPreviewOptions, containerPreviewOptions, ivArrowPreview, "Print preview options");
-        setupCollapsibleSection(headerEtherpad, containerEtherpad, ivArrowEtherpad, "Pastebin settings");
-        setupCollapsibleSection(headerDiagnostics, containerDiagnostics, ivArrowDiagnostics, "Diagnostics & maintenance");
-
-        int savedTheme = prefs.getInt("PREF_APP_THEME", 0);
-        if (savedTheme == 1) {
-            rbThemeDark.setChecked(true);
-        } else if (savedTheme == 2) {
-            rbThemeLight.setChecked(true);
-        } else {
-            rbThemeSystem.setChecked(true);
-        }
-
-        rgAppTheme.setOnCheckedChangeListener((group, checkedId) -> {
-            int newTheme = 0;
-            String themeName = "System default";
-            if (checkedId == R.id.rbThemeDark) {
-                newTheme = 1;
-                themeName = "Dark theme";
-            } else if (checkedId == R.id.rbThemeLight) {
-                newTheme = 2;
-                themeName = "Light theme";
-            }
-            prefs.edit().putInt("PREF_APP_THEME", newTheme).apply();
-            log("[UI_EVENT] App theme changed to: " + themeName);
-            applyAppTheme(newTheme);
-        });
-
-        boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
-        boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
-        String savedEtherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "");
-        String savedEtherpadApiKey = prefs.getString("PREF_ETHERPAD_API_KEY", "");
-
-        switchLocal.setChecked(showLocal);
-        switchNetwork.setChecked(showNetwork);
-        if (etEtherpadUrl != null) {
-            etEtherpadUrl.setText(savedEtherpadUrl);
-        }
-        if (etEtherpadApiKey != null) {
-            etEtherpadApiKey.setText(savedEtherpadApiKey);
-        }
-
-        switchLocal.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            prefs.edit().putBoolean("PREF_LOCAL_PREVIEW", isChecked).apply();
-            log("[UI_EVENT] [SETTINGS] Preview Local Prints set to: " + isChecked);
-        });
-
-        switchNetwork.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            prefs.edit().putBoolean("PREF_NETWORK_PREVIEW", isChecked).apply();
-            log("[UI_EVENT] [SETTINGS] Preview Network Prints set to: " + isChecked);
-        });
-
-        if (btnDiagnostics != null) {
-            btnDiagnostics.setOnClickListener(v -> {
-                log("[UI_EVENT] [DIAGNOSTIC] Running hardware status check...");
-                printManager.runPrinterDiagnosticsAsync();
-            });
-        }
-
-        if (btnCheckUpdates != null) {
-            btnCheckUpdates.setOnClickListener(v -> {
-                log("[UI_EVENT] Clicked 'Check for updates' button.");
-                if (appUpdateManager != null) {
-                    appUpdateManager.checkForUpdates(false);
-                }
-            });
-        }
-
-        new MaterialAlertDialogBuilder(this)
-                .setView(dialogView)
-                .setPositiveButton(R.string.done, (dialog, which) -> {
-                    log("[UI_EVENT] Clicked 'Done' button in settings dialog.");
-                    if (etEtherpadUrl != null && etEtherpadUrl.getText() != null) {
-                        String newUrl = etEtherpadUrl.getText().toString().trim();
-                        prefs.edit().putString("PREF_ETHERPAD_URL", newUrl).apply();
-                        if (!newUrl.isEmpty()) {
-                            log("[SETTINGS] Etherpad Pastebin URL set to: " + newUrl);
-                        } else {
-                            log("[SETTINGS] Etherpad Pastebin URL cleared.");
-                        }
-                    }
-                    if (etEtherpadApiKey != null && etEtherpadApiKey.getText() != null) {
-                        String newApiKey = etEtherpadApiKey.getText().toString().trim();
-                        prefs.edit().putString("PREF_ETHERPAD_API_KEY", newApiKey).apply();
-                    }
-                })
-                .show();
-    }
-
-    private void setupCollapsibleSection(View header, View container, ImageView arrow, String sectionName) {
-        if (header != null && container != null && arrow != null) {
-            header.setOnClickListener(v -> {
-                boolean willBeVisible = container.getVisibility() != View.VISIBLE;
-                container.setVisibility(willBeVisible ? View.VISIBLE : View.GONE);
-                arrow.animate().rotation(willBeVisible ? 180f : 0f).setDuration(200).start();
-                log("[UI_EVENT] Tapped '" + sectionName + "' section header -> " + (willBeVisible ? "EXPANDED" : "COLLAPSED"));
-            });
-        }
-    }
-
     private void showUpdateAvailableDialog(String latestTag, String releaseNotes, String apkUrl) {
         new MaterialAlertDialogBuilder(this)
                 .setTitle("RolloPrint update available (v" + latestTag + ")")
@@ -516,7 +369,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (etherpadUrl.isEmpty()) {
             log("[ETHERPAD] No Pastebin URL configured. Please set your Pastebin URL in Print settings.");
-            showSettingsDialog();
+            startActivity(new Intent(this, SettingsActivity.class));
             return;
         }
 

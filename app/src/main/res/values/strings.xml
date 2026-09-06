@@ -9,6 +9,11 @@
     <string name="preview_local_prints_sub">Show preview dialog when printing local files</string>
     <string name="preview_network_prints">Preview network prints</string>
     <string name="preview_network_prints_sub">Show preview dialog on phone when network jobs arrive</string>
+    <string name="hold_network_prints">Hold incoming network prints</string>
+    <string name="hold_network_prints_sub">Hold network jobs in queue for manual confirmation</string>
+    <string name="raw_port_9100">Enable RAW socket server (Port 9100)</string>
+    <string name="raw_port_9100_sub">Accepts raw JetDirect / AppSocket print streams</string>
+    <string name="network_options_header">Network print options</string>
     <string name="print_preview_title">Print preview</string>
     <string name="cancel">Cancel</string>
     <string name="confirm_print">Confirm print</string>
@@ -39,6 +44,6 @@
     <string name="theme_system">System default</string>
     <string name="theme_dark">Dark theme</string>
     <string name="theme_light">Light theme</string>
-    <string name="sort_oldest_first">Oldest first ↕</string>
-    <string name="sort_newest_first">Newest first ↕</string>
+    <string name="sort_oldest_first">Oldest first</string>
+    <string name="sort_newest_first">Newest first</string>
 </resources>

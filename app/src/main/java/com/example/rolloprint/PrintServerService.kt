@@ -17,19 +17,17 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
 
 class PrintServerService : Service() {
 
     private val binder = LocalBinder()
     var ippServer: IppServer? = null
         private set
+    var rawSocketServer: RawSocketServer? = null
+        private set
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
-    private var pollExecutor: ScheduledExecutorService? = null
 
     private var nsdManager: NsdManager? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
@@ -100,26 +98,17 @@ class PrintServerService : Service() {
             }, onNetworkBitmapRendered)
         }
         ippServer?.start()
-        startStatusPolling(usbPrintManager)
-        registerNsdService(logger)
-    }
 
-    private fun startStatusPolling(usbPrintManager: UsbPrintManager) {
-        if (pollExecutor == null) {
-            pollExecutor = Executors.newSingleThreadScheduledExecutor()
-            pollExecutor?.scheduleWithFixedDelay({
-                if (isServerRunning) {
-                    usbPrintManager.pollHardwareStatus()
-                }
-            }, 1, 3, TimeUnit.SECONDS)
+        val prefs = getSharedPreferences("rollo_prefs", MODE_PRIVATE)
+        val enableRawPort9100 = prefs.getBoolean("PREF_RAW_PORT_9100", true)
+        if (enableRawPort9100) {
+            if (rawSocketServer == null) {
+                rawSocketServer = RawSocketServer(this, usbPrintManager, jobQueueManager, logger)
+            }
+            rawSocketServer?.start()
         }
-    }
 
-    private fun stopStatusPolling() {
-        try {
-            pollExecutor?.shutdownNow()
-        } catch (_: Exception) {}
-        pollExecutor = null
+        registerNsdService(logger)
     }
 
     private fun registerNsdService(logger: (String) -> Unit) {
@@ -147,7 +136,7 @@ class PrintServerService : Service() {
 
             registrationListener = object : NsdManager.RegistrationListener {
                 override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
-                    logger("[mDNS] Registered _ipp._tcp service: ${serviceInfo.serviceName} on port $PORT")
+                    logger("[mDNS] Registered _ipp._tcp & AirPrint service: ${serviceInfo.serviceName} on port $PORT")
                 }
                 override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
                     logger("[mDNS] Registration failed: $errorCode")
@@ -175,7 +164,8 @@ class PrintServerService : Service() {
 
     fun stopServer() {
         ippServer?.stop()
-        stopStatusPolling()
+        rawSocketServer?.stop()
+        rawSocketServer = null
         unregisterNsdService()
         releasePowerLocks()
         isServerRunning = false
@@ -222,7 +212,6 @@ class PrintServerService : Service() {
         val stopIntent = Intent(this, PrintServerService::class.java).apply {
             action = ACTION_STOP
         }
-
         val stopPendingIntent = PendingIntent.getService(
             this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE
         )

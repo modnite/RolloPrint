@@ -9,6 +9,14 @@ All notable milestone releases for the **RolloPrint** application are documented
 - **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
 - **Universal Android Default Print Service Auto-Discovery**: Configured full mDNS TXT descriptors (`kind`, `URF`, `papercustom`, `pdl`) in `PrintServerService.kt`. Android Default Print Service, Mopria, iOS AirPrint, and Linux CUPS auto-discover `Rollo Printer` as a native networked label printer.
 
+### `v2.5.0` — September 6, 2026 at 2:30 AM
+- **Dedicated Settings Activity (`SettingsActivity.java`)**: Replaced modal settings popup with a full-screen `SettingsActivity` featuring a top Material Toolbar with back navigation. Toggling themes or options no longer recreates or closes the settings UI.
+- **Light Mode System Bar Icon Awareness**: Applied `WindowInsetsControllerCompat` to dynamically invert status bar and navigation bar icons to dark icons in Light Mode, preventing white-on-white status bar icon washouts.
+- **Complete Elimination of Hardware Status Badge & Polling Noise**: Removed `tvHardwareStatus` badge from `cardHeader`. The app runs as a quiet, efficient Black-Box Print Engine without thread churn or USB locks.
+- **Multi-Protocol Network Server (AirPrint & RAW Port 9100)**: Added `RawSocketServer.kt` on Port 9100 for JetDirect / AppSocket raw stream ingestion. Registered AirPrint mDNS subtype `_universal._sub._ipp._tcp.` alongside `_ipp._tcp.` with full TXT attributes (`URF=CP1,SM1,RS203`, `pdl=application/pdf,image/pwg-raster`, `kind=document,label`).
+- **"Hold Incoming Network Prints" Switch**: Added `PREF_HOLD_NETWORK_JOBS` setting switch. When enabled, incoming network jobs enter `JobQueueManager` in `HELD` status for paper-free troubleshooting and job batching.
+- **Directional Arrow Sort Order Indicator**: Updated Queue Manager sort order button to a directional arrow toggle ($1 \rightarrow 9$ vs $9 \rightarrow 1$).
+
 ### `v2.2.1` — September 6, 2026 at 1:30 AM
 - **Linux CUPS Page Size Attribute Alignment**: Added top-level `mediaSupported` array (`na_index-4x6_4x6in`, `oe_4x6-label_4x6in`, `custom_min_4x6in`, `na_letter_8.5x11in`, `iso_a4_210x297mm`) and `pdfVersionsSupported` to `IppServer.kt`. Resolves Linux CUPS `pdftopdf` page-size matching filter crashes on Linux KDE Plasma.
 - **Surgical `Operation.createJob` Integration**: Preserved the lightweight `v1.8.1` IPP Everywhere response architecture while returning assigned `job-id` attributes for `createJob` requests.
