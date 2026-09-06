@@ -17,7 +17,7 @@ To bring this vision to life rapidly, I paired up with my AI co-pilot (Gemini). 
 
 ---
 
-## Milestone 1.0.0 — September 2, 2026: The Core TSPL Engine & USB OTG Bulk Pipeline
+## Milestone 1.0.0 — September 2, 2026 at 12:17 PM: The Core TSPL Engine & USB OTG Bulk Pipeline
 
 My first goal was raw hardware communication over USB OTG. The Rollo X1038 expects monochrome 203 DPI TSPL2 bitmap streams formatted as $816 \times 1218$ pixels for standard $101.6 \times 152.4 \text{ mm}$ (4x6 inch) labels.
 
@@ -42,7 +42,7 @@ My first goal was raw hardware communication over USB OTG. The Rollo X1038 expec
 
 ---
 
-## Milestone 1.1.0 – 1.2.0 — September 3, 2026: Driverless IPP Everywhere Server & HP `jIPP` Engine
+## Milestone 1.1.0 – 1.3.0 — September 5, 2026 at 10:58 AM: Driverless IPP Everywhere Server & HP `jIPP` Engine
 
 To allow any Linux (CUPS), macOS, or Windows PC on the office network to discover and print to the Rollo thermal printer without installing vendor drivers, I implemented an embedded HTTP/1.1 IPP Everywhere server listening on Port `8631`.
 
@@ -53,7 +53,7 @@ To allow any Linux (CUPS), macOS, or Windows PC on the office network to discove
 
 ---
 
-## Milestone 1.5.0 — September 4, 2026: Real-Time Hardware Status Polling & Onboard RAM Purging
+## Milestone 1.5.0 — September 5, 2026 at 4:25 PM: Real-Time Hardware Status Polling & Onboard RAM Purging
 
 When paper ran out during printing, jobs would sit buffered in memory. Working with my AI pair-programmer, I conducted hardware status investigations on the Rollo X1038 USB endpoints to achieve real-time hardware status detection.
 
@@ -71,7 +71,7 @@ I wired status polling into a 3-second background thread in `PrintServerService`
 
 ---
 
-## Milestone 1.7.0 – 1.9.0 — September 4, 2026: Held Queue Manager, Pastebin Log Exporter & In-App Auto-Updates
+## Milestone 1.7.0 – 1.9.0 — September 5, 2026 at 6:51 PM: Held Queue Manager, Pastebin Log Exporter & In-App Auto-Updates
 
 To prevent accidental printing when thermal paper is reinserted, I created `JobQueueManager`:
 - Jobs arriving while paper is out are held in app memory (`JobStatus.HELD`).
@@ -81,7 +81,7 @@ To prevent accidental printing when thermal paper is reinserted, I created `JobQ
 
 ---
 
-## Milestone 2.0.0 — September 4, 2026: Comprehensive UI/UX Design Overhaul & Material 3 Refinements
+## Milestone 2.0.0 — September 5, 2026 at 8:03 PM: Comprehensive UI/UX Design Overhaul & Material 3 Refinements
 
 In Milestone 2.0.0, I completed a thorough UI/UX overhaul to eliminate all visual friction, text wrapping, and layout inconsistencies across phone portrait, landscape, tablet, and Samsung DeX desktop modes:
 
