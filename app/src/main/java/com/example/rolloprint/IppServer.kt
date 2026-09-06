@@ -285,6 +285,12 @@ class IppServer(
             return data.copyOfRange(pdfStart, data.size)
         }
 
+        val psHeader = "%!PS-Adobe".toByteArray()
+        val psStart = findByteSequence(data, psHeader)
+        if (psStart != -1) {
+            return data.copyOfRange(psStart, data.size)
+        }
+
         val pngHeader = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte())
         val pngStart = findByteSequence(data, pngHeader)
         if (pngStart != -1) return data.copyOfRange(pngStart, data.size)
@@ -306,27 +312,6 @@ class IppServer(
         val printerUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print")
         val printerMoreInfo = URI("http://${getLocalIpAddress()}:$PORT/")
         val printerUuid = URI("urn:uuid:e5b02130-1c4b-483b-9a99-000000000001")
-
-        val states = printManager.getCurrentHardwareState()
-        val printerState = if (states.contains(HardwareState.HEAD_OPEN) || states.contains(HardwareState.OUT_OF_PAPER)) {
-            PrinterState.stopped
-        } else {
-            PrinterState.idle
-        }
-
-        val stateReasons = mutableListOf<String>()
-        if (states.contains(HardwareState.HEAD_OPEN)) {
-            stateReasons.add("door-open-error")
-        }
-        if (states.contains(HardwareState.OUT_OF_PAPER)) {
-            stateReasons.add("media-empty-error")
-        }
-        if (states.contains(HardwareState.PAUSED)) {
-            stateReasons.add("paused")
-        }
-        if (stateReasons.isEmpty()) {
-            stateReasons.add("none")
-        }
 
         val opGroup = MutableAttributeGroup(
             Tag.operationAttributes,
@@ -367,8 +352,8 @@ class IppServer(
                 Types.charsetSupported.of("utf-8"),
                 Types.naturalLanguageConfigured.of("en"),
                 Types.generatedNaturalLanguageSupported.of("en"),
-                Types.printerState.of(printerState),
-                Types.printerStateReasons.of(stateReasons),
+                Types.printerState.of(PrinterState.idle),
+                Types.printerStateReasons.of("none"),
                 Types.printerIsAcceptingJobs.of(true),
                 Types.queuedJobCount.of(0),
                 Types.ippVersionsSupported.of("1.1", "2.0"),
@@ -382,6 +367,7 @@ class IppServer(
                 Types.documentFormatSupported.of(
                     "image/pwg-raster",
                     "application/pdf",
+                    "application/postscript",
                     "image/png",
                     "image/jpeg",
                     "application/octet-stream"
@@ -568,7 +554,7 @@ class IppServer(
 
             // 3. Check for CUPS #PDF-BANNER test page
             val textContent = String(data, Charsets.UTF_8)
-            if (textContent.startsWith("#PDF-BANNER") || textContent.contains("default-testpage.pdf")) {
+            if (textContent.startsWith("#PDF-BANNER") || textContent.contains("default-testpage.pdf") || textContent.contains("Test Page", ignoreCase = true)) {
                 logger("[IPP] Received CUPS Test Page Banner. Rendering RolloPrint 4x6 Test Label...")
                 createCupsTestPagePdf(tempPdfFile)
                 ingestPdfToLocalPrint(tempPdfFile, jobId)
