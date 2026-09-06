@@ -174,9 +174,14 @@ class IppServer(
                         logger("[IPP] Validate-Job request (req-id=$requestId, v=$version) from $clientIp")
                         sendSimpleIppResponse(socket, version, requestId, Status.successfulOk)
                     }
-                    Operation.printJob, Operation.sendDocument -> {
+                    Operation.createJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
-                        logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp")
+                        sendCreateJobResponse(socket, version, requestId, jobId)
+                    }
+                    Operation.sendDocument, Operation.printJob -> {
+                        val jobId = jobIdCounter.getAndIncrement()
+                        logger("[IPP] Print-Job / Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
 
                         sendPrintJobResponse(socket, version, requestId, jobId)
 
@@ -372,6 +377,8 @@ class IppServer(
                 Types.operationsSupported.of(
                     Operation.printJob,
                     Operation.validateJob,
+                    Operation.createJob,
+                    Operation.sendDocument,
                     Operation.getJobAttributes,
                     Operation.getPrinterAttributes
                 ),
@@ -420,6 +427,33 @@ class IppServer(
         )
 
         val responsePacket = IppPacket(Status.successfulOk, requestId, opGroup, printerGroup)
+        sendIppResponsePacket(socket, version, responsePacket)
+    }
+
+    private fun sendCreateJobResponse(socket: Socket, version: Int, requestId: Int, jobId: Int) {
+        val printerUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print")
+        val jobUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print/job-$jobId")
+
+        val opGroup = MutableAttributeGroup(
+            Tag.operationAttributes,
+            listOf(
+                Types.attributesCharset.of("utf-8"),
+                Types.attributesNaturalLanguage.of("en")
+            )
+        )
+
+        val jobGroup = MutableAttributeGroup(
+            Tag.jobAttributes,
+            listOf(
+                Types.jobId.of(jobId),
+                Types.jobUri.of(jobUri),
+                Types.jobPrinterUri.of(printerUri),
+                Types.jobState.of(JobState.pending),
+                Types.jobStateReasons.of("job-incoming")
+            )
+        )
+
+        val responsePacket = IppPacket(Status.successfulOk, requestId, opGroup, jobGroup)
         sendIppResponsePacket(socket, version, responsePacket)
     }
 

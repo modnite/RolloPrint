@@ -4,6 +4,9 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.1.1` — September 5, 2026 at 11:00 PM
+- **IPP Operation.createJob Response Handler**: Implemented RFC 8011 `Create-Job` operation handling returning assigned `job-id`, `job-uri`, and `job-state` attributes in `jobAttributes`. Eliminates CUPS `pdftopdf stopped with status 1` and `universal filter failed` errors on Linux KDE Plasma.
+
 ### `v2.1.0` — September 5, 2026 at 10:30 PM
 - **Linux CUPS `pdftopdf` Compatibility Descriptors**: Added missing IPP Everywhere attributes (`media-supported`, `media-ready`, `media-default`, `media-type-supported`, `pdf-versions-supported`, `printer-device-id`) to `IppServer.kt`. Resolves CUPS `universal filter failed` and `pdftopdf stopped with status 1` errors on Linux KDE Plasma.
 - **Continuous 1.5s Hardware Polling Loop**: Decoupled hardware status polling from `PrintServerService`. Background USB status polling runs continuously every 1.5 seconds from app launch regardless of whether the Print Server is ON or OFF, updating status badges in <1.5s.
