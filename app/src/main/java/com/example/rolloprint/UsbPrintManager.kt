@@ -181,7 +181,15 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             val connection = usbManager.openDevice(device) ?: return false
             try {
                 val usbInterface = device.getInterface(0)
-                if (!connection.claimInterface(usbInterface, true)) return false
+                var claimed = false
+                for (attempt in 0..2) {
+                    if (connection.claimInterface(usbInterface, true)) {
+                        claimed = true
+                        break
+                    }
+                    Thread.sleep(100)
+                }
+                if (!claimed) return false
 
                 val outEndpoint = (0 until usbInterface.endpointCount)
                     .map { usbInterface.getEndpoint(it) }
@@ -230,7 +238,16 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
             try {
                 val usbInterface = device.getInterface(0)
-                if (!connection.claimInterface(usbInterface, true)) {
+                var claimed = false
+                for (attempt in 0..2) {
+                    if (connection.claimInterface(usbInterface, true)) {
+                        claimed = true
+                        break
+                    }
+                    Thread.sleep(100)
+                }
+
+                if (!claimed) {
                     val newState = setOf(HardwareState.UNKNOWN)
                     updateHardwareState(newState)
                     return newState
@@ -352,7 +369,16 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
             try {
                 val usbInterface = device.getInterface(0)
-                if (!connection.claimInterface(usbInterface, true)) {
+                var claimed = false
+                for (attempt in 0..2) {
+                    if (connection.claimInterface(usbInterface, true)) {
+                        claimed = true
+                        break
+                    }
+                    Thread.sleep(100)
+                }
+
+                if (!claimed) {
                     logger("ERROR: Interface Busy.")
                     return false
                 }

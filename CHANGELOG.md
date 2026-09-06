@@ -4,6 +4,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.0.4` — September 5, 2026 at 10:00 PM
+- **USB Interface Claim Retry Loop**: Added a 300ms retry loop on `connection.claimInterface(usbInterface, true)` in `UsbPrintManager.kt`. Eliminates interface lockouts and spurious `UNKNOWN` state transitions when rapidly starting/stopping background services or re-plugging USB OTG docks.
+- **Full-Width RadioButton Touch Bounds**: Set `clickable="true"`, `focusable="true"`, and `background="?attr/selectableItemBackground"` on Theme options in `dialog_settings.xml`. Tapping anywhere across the full width of the row selects the theme cleanly.
+
 ### `v2.0.3` — September 5, 2026 at 9:30 PM
 - **Pinned Queue Manager Action Buttons**: Re-architected `dialog_queue_manager.xml` with `layout_height="0dp"` and `layout_weight="1"` on `rvQueueJobs`. Action buttons (`Print all`, `Clear all`, `Done`) are permanently pinned at the bottom with full height regardless of how many jobs fill the queue.
 - **TextInput Overlapping Hint Fix**: Removed duplicate edit hints from `TextInputEditText` inside `dialog_settings.xml`. Material 3 `TextInputLayout` floating hints float up smoothly with zero text overlap.
