@@ -118,35 +118,35 @@ class IppServer(
 
                 // 1. Read HTTP Request Headers
                 val headerBytes = readHttpHeaderBytes(input)
-                if (headerBytes.isEmpty()) {
+                val headerText = String(headerBytes, Charsets.US_ASCII)
+
+                if (headerText.isEmpty()) {
                     socket.close()
                     return@execute
                 }
 
-                val headerStr = String(headerBytes, Charsets.US_ASCII)
-
-                // Handle Expect: 100-continue if sent by client
-                if (headerStr.contains("Expect: 100-continue", ignoreCase = true)) {
-                    val continueResponse = "HTTP/1.1 100 Continue\r\n\r\n".toByteArray(Charsets.US_ASCII)
-                    socket.getOutputStream().write(continueResponse)
+                // Handle Expect: 100-continue header for CUPS / Windows IPP
+                if (headerText.contains("Expect: 100-continue", ignoreCase = true)) {
+                    val continueResp = "HTTP/1.1 100 Continue\r\n\r\n".toByteArray(Charsets.US_ASCII)
+                    socket.getOutputStream().write(continueResp)
                     socket.getOutputStream().flush()
                 }
 
-                // 2. Read HTTP Body (Handling Chunked or Strict Content-Length)
-                val isChunked = headerStr.contains("Transfer-Encoding: chunked", ignoreCase = true)
-                val contentLength = parseContentLength(headerStr)
+                // 2. Read HTTP Body Payload
+                val contentLength = parseContentLength(headerText)
+                val isChunked = headerText.contains("Transfer-Encoding: chunked", ignoreCase = true)
 
                 val bodyData = if (isChunked) {
                     decodeChunkedBody(input)
                 } else if (contentLength > 0) {
-                    val bodyBuf = ByteArray(contentLength)
-                    var totalRead = 0
-                    while (totalRead < contentLength && isRunning) {
-                        val r = input.read(bodyBuf, totalRead, contentLength - totalRead)
+                    val buf = ByteArray(contentLength)
+                    var read = 0
+                    while (read < contentLength) {
+                        val r = input.read(buf, read, contentLength - read)
                         if (r == -1) break
-                        totalRead += r
+                        read += r
                     }
-                    bodyBuf.copyOfRange(0, totalRead)
+                    buf
                 } else {
                     ByteArray(0)
                 }
@@ -157,7 +157,7 @@ class IppServer(
                     return@execute
                 }
 
-                // 3. Parse IPP Request Packet using HP jipp-core (Strict Framing)
+                // 3. Parse IPP Request Packet using HP jipp-core
                 val ippInputStream = IppInputStream(ByteArrayInputStream(bodyData))
                 val ippRequestPacket = ippInputStream.readPacket()
 
@@ -165,7 +165,6 @@ class IppServer(
                 val operation = ippRequestPacket.operation
                 val requestId = ippRequestPacket.requestId
 
-                // Route ALL URI paths (/, /cups, /ipp/print, etc.) to IPP dispatcher
                 when (operation) {
                     Operation.getPrinterAttributes -> {
                         logger("[IPP] Get-Printer-Attributes request (req-id=$requestId, v=$version) from $clientIp")
@@ -178,17 +177,14 @@ class IppServer(
                     Operation.createJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
                         logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp")
-                        // Non-blocking: Immediately write HTTP 200 response to client to prevent keep-alive deadlocks
                         sendCreateJobResponse(socket, version, requestId, jobId)
                     }
-                    Operation.printJob, Operation.sendDocument -> {
+                    Operation.sendDocument, Operation.printJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
-                        logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Print-Job / Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
 
-                        // Non-blocking: Immediately write HTTP 200 response to client to prevent keep-alive deadlocks
                         sendPrintJobResponse(socket, version, requestId, jobId)
 
-                        // Extract document payload
                         val docData = extractDocumentBytes(bodyData)
                         if (docData.isNotEmpty()) {
                             processIncomingDocumentPayload(docData, jobId)
@@ -252,7 +248,7 @@ class IppServer(
                     totalRead += r
                 }
                 baos.write(chunkBuf, 0, totalRead)
-                readAsciiLine(input) // trailing \r\n after chunk
+                readAsciiLine(input)
             }
         } catch (_: Exception) {}
         return baos.toByteArray()
@@ -264,7 +260,7 @@ class IppServer(
         while (isRunning) {
             val b = input.read()
             if (b == -1) break
-            if (prev == 0x0D && b == 0x0A) { // \r\n
+            if (prev == 0x0D && b == 0x0A) {
                 val bytes = baos.toByteArray()
                 return String(bytes, 0, Math.max(0, bytes.size - 1), Charsets.US_ASCII)
             }
@@ -306,7 +302,7 @@ class IppServer(
         if (jpgStart != -1) return data.copyOfRange(jpgStart, data.size)
 
         for (i in 8 until data.size) {
-            if (data[i] == 0x03.toByte() && i + 1 < data.size) { // end-of-attributes-tag
+            if (data[i] == 0x03.toByte() && i + 1 < data.size) {
                 return data.copyOfRange(i + 1, data.size)
             }
         }
@@ -361,7 +357,7 @@ class IppServer(
                 Types.printerState.of(PrinterState.idle),
                 Types.printerStateReasons.of("none"),
                 Types.printerIsAcceptingJobs.of(true),
-                Types.queuedJobCount.of(0),
+                Types.queuedJobCount.of(jobQueueManager.getQueueSize()),
                 Types.ippVersionsSupported.of("1.1", "2.0"),
                 Types.operationsSupported.of(
                     Operation.printJob,
@@ -406,16 +402,12 @@ class IppServer(
                 Types.printerName.of("Rollo Thermal Printer 4x6"),
                 Types.printerInfo.of("Rollo Thermal Printer 4x6"),
                 Types.printerLocation.of("Local Network"),
-                Types.printerMakeAndModel.of("Rollo Thermal Printer 4x6"),
                 Types.printerMoreInfo.of(printerMoreInfo),
                 Types.printerUuid.of(printerUuid),
                 Types.printerUriSupported.of(printerUri),
                 Types.uriAuthenticationSupported.of("none"),
                 Types.uriSecuritySupported.of("none"),
-                Types.pdlOverrideSupported.of("not-attempted"),
-                Types.colorSupported.of(false),
-                Types.pagesPerMinute.of(60),
-                Types.printerUpTime.of((System.currentTimeMillis() / 1000).toInt())
+                Types.pdlOverrideSupported.of("not-attempted")
             )
         )
 
@@ -424,35 +416,6 @@ class IppServer(
             code = Status.successfulOk.code,
             requestId = requestId,
             attributeGroups = listOf(opGroup, printerGroup)
-        )
-        sendIppPacketResponse(socket, responsePacket)
-    }
-
-    private fun sendPrintJobResponse(socket: Socket, version: Int, requestId: Int, jobId: Int) {
-        val jobUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print/$jobId")
-
-        val opGroup = MutableAttributeGroup(
-            Tag.operationAttributes,
-            listOf(
-                Types.attributesCharset.of("utf-8"),
-                Types.attributesNaturalLanguage.of("en")
-            )
-        )
-
-        val jobGroup = MutableAttributeGroup(
-            Tag.jobAttributes,
-            listOf(
-                Types.jobId.of(jobId),
-                Types.jobUri.of(jobUri),
-                Types.jobState.of(JobState.completed)
-            )
-        )
-
-        val responsePacket = IppPacket(
-            versionNumber = version,
-            code = Status.successfulOk.code,
-            requestId = requestId,
-            attributeGroups = listOf(opGroup, jobGroup)
         )
         sendIppPacketResponse(socket, responsePacket)
     }
@@ -516,6 +479,33 @@ class IppServer(
         sendIppPacketResponse(socket, responsePacket)
     }
 
+    private fun sendPrintJobResponse(socket: Socket, version: Int, requestId: Int, jobId: Int) {
+        val opGroup = MutableAttributeGroup(
+            Tag.operationAttributes,
+            listOf(
+                Types.attributesCharset.of("utf-8"),
+                Types.attributesNaturalLanguage.of("en")
+            )
+        )
+
+        val jobGroup = MutableAttributeGroup(
+            Tag.jobAttributes,
+            listOf(
+                Types.jobId.of(jobId),
+                Types.jobState.of(JobState.processing),
+                Types.jobStateReasons.of("job-printing")
+            )
+        )
+
+        val responsePacket = IppPacket(
+            versionNumber = version,
+            code = Status.successfulOk.code,
+            requestId = requestId,
+            attributeGroups = listOf(opGroup, jobGroup)
+        )
+        sendIppPacketResponse(socket, responsePacket)
+    }
+
     private fun sendSimpleIppResponse(socket: Socket, version: Int, requestId: Int, status: Status) {
         val opGroup = MutableAttributeGroup(
             Tag.operationAttributes,
@@ -562,7 +552,7 @@ class IppServer(
     }
 
     private fun processIncomingDocumentPayload(data: ByteArray, jobId: Int) {
-        val tempPdfFile = File(context.cacheDir, "temp_incoming.pdf")
+        val tempPdfFile = File(context.cacheDir, "temp_incoming_$jobId.pdf")
 
         try {
             // 1. Check if incoming payload contains PDF (%PDF-)
@@ -590,6 +580,7 @@ class IppServer(
                     logger("[IPP] Extracted Image document for Job #$jobId. Converting to 4x6 PDF...")
                     createPdfFromBitmap(bitmap, tempPdfFile)
                     ingestPdfToLocalPrint(tempPdfFile, jobId)
+                    bitmap.recycle()
                     return
                 }
             }
@@ -610,6 +601,8 @@ class IppServer(
 
         } catch (e: Exception) {
             logger("[IPP] ERROR processing IPP job #$jobId: ${e.message}")
+        } finally {
+            try { tempPdfFile.delete() } catch (_: Exception) {}
         }
     }
 
@@ -618,6 +611,7 @@ class IppServer(
         val pageInfo = PdfDocument.PageInfo.Builder(UsbPrintManager.TARGET_WIDTH, UsbPrintManager.TARGET_HEIGHT, 1).create()
         val page = pdfDoc.startPage(pageInfo)
         val canvas = page.canvas
+
         canvas.drawColor(Color.WHITE)
 
         val paint = Paint().apply {
@@ -743,16 +737,15 @@ class IppServer(
                 jobQueueManager.addJob(bitmap, "Network Job #$jobId")
             }
         } else {
-            logger("[IPP] ERROR: Local PDF rendering engine failed.")
+            logger("[IPP] ERROR: Failed to render bitmap for Network Job #$jobId")
         }
     }
 
-    private fun findByteSequence(data: ByteArray, pattern: ByteArray): Int {
-        if (pattern.isEmpty() || data.size < pattern.size) return -1
-        for (i in 0..data.size - pattern.size) {
+    private fun findByteSequence(data: ByteArray, seq: ByteArray): Int {
+        for (i in 0..data.size - seq.size) {
             var match = true
-            for (j in pattern.indices) {
-                if (data[i + j] != pattern[j]) {
+            for (j in seq.indices) {
+                if (data[i + j] != seq[j]) {
                     match = false
                     break
                 }
@@ -762,7 +755,7 @@ class IppServer(
         return -1
     }
 
-    fun getLocalIpAddress(): String {
+    private fun getLocalIpAddress(): String {
         try {
             val interfaces = NetworkInterface.getNetworkInterfaces()
             while (interfaces.hasMoreElements()) {

@@ -4,6 +4,11 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.2.0` — September 6, 2026 at 1:00 AM
+- **Memory & Bitmap Cleanup**: Added automatic bitmap recycling and temp file deletion (`temp_incoming_*.pdf`) after IPP rendering in `IppServer.kt`. Eliminates heap memory leaks and prevents app crashes when receiving multiple consecutive network jobs.
+- **Permanent Activity Log & Server State Persistence**: Persisted activity log history (`tvLog`) and Print Server active state in `SharedPreferences` (`PREF_SERVER_RUNNING`). If the app or device restarts, log history and print server status are 100% preserved.
+- **mDNS Service Name Uniqueness**: Cleared previous NsdListeners prior to service registration in `PrintServerService.kt`, guaranteeing the mDNS service name remains strictly `"Rollo Printer"`.
+
 ### `v2.1.7` — September 6, 2026 at 12:00 AM
 - **mDNS Service Registration Uniqueness & Full AirPrint Descriptors**: Added automatic pre-cleanup of previous NSD registration listeners in `PrintServerService.kt`. Ensures the mDNS service name remains strictly `"Rollo Printer"` (never `"Rollo Printer (3)"`), allowing `lpadmin -v "dnssd://Rollo%20Printer._ipp._tcp.local/ipp/print"` and Linux `driverless -d` to resolve the printer instantly. Added AirPrint TXT descriptors (`kind`, `URF`, `papercustom`).
 
