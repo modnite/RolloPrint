@@ -175,6 +175,12 @@ class IppServer(
                         logger("[IPP] Validate-Job request (req-id=$requestId, v=$version) from $clientIp")
                         sendSimpleIppResponse(socket, version, requestId, Status.successfulOk)
                     }
+                    Operation.createJob -> {
+                        val jobId = jobIdCounter.getAndIncrement()
+                        logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp")
+                        // Non-blocking: Immediately write HTTP 200 response to client to prevent keep-alive deadlocks
+                        sendCreateJobResponse(socket, version, requestId, jobId)
+                    }
                     Operation.printJob, Operation.sendDocument -> {
                         val jobId = jobIdCounter.getAndIncrement()
                         logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
@@ -360,6 +366,8 @@ class IppServer(
                 Types.operationsSupported.of(
                     Operation.printJob,
                     Operation.validateJob,
+                    Operation.createJob,
+                    Operation.sendDocument,
                     Operation.getJobAttributes,
                     Operation.getPrinterAttributes
                 ),
@@ -388,9 +396,9 @@ class IppServer(
                 Types.finishingsSupported.of(Finishing.none),
                 Types.outputBinDefault.of("face-down"),
                 Types.outputBinSupported.of("face-down"),
-                Types.mediaSupported.of("oe_4x6-label_4x6in", "na_index-4x6_4x6in", "na_letter_8.5x11in", "custom_min_4x6in"),
-                Types.mediaDefault.of("oe_4x6-label_4x6in"),
-                Types.mediaReady.of("oe_4x6-label_4x6in"),
+                Types.mediaSupported.of("na_index-4x6_4x6in", "na_letter_8.5x11in"),
+                Types.mediaDefault.of("na_index-4x6_4x6in"),
+                Types.mediaReady.of("na_index-4x6_4x6in"),
                 Types.mediaColDatabase.of(mediaColDatabase),
                 Types.mediaColDefault.of(mediaColDefault),
                 Types.printerResolutionSupported.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
@@ -461,7 +469,41 @@ class IppServer(
         val jobGroup = MutableAttributeGroup(
             Tag.jobAttributes,
             listOf(
-                Types.jobState.of(JobState.completed)
+                Types.jobId.of(1),
+                Types.jobState.of(JobState.completed),
+                Types.jobStateReasons.of("job-completed-successfully")
+            )
+        )
+
+        val responsePacket = IppPacket(
+            versionNumber = version,
+            code = Status.successfulOk.code,
+            requestId = requestId,
+            attributeGroups = listOf(opGroup, jobGroup)
+        )
+        sendIppPacketResponse(socket, responsePacket)
+    }
+
+    private fun sendCreateJobResponse(socket: Socket, version: Int, requestId: Int, jobId: Int) {
+        val printerUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print")
+        val jobUri = URI("ipp://${getLocalIpAddress()}:$PORT/ipp/print/job-$jobId")
+
+        val opGroup = MutableAttributeGroup(
+            Tag.operationAttributes,
+            listOf(
+                Types.attributesCharset.of("utf-8"),
+                Types.attributesNaturalLanguage.of("en")
+            )
+        )
+
+        val jobGroup = MutableAttributeGroup(
+            Tag.jobAttributes,
+            listOf(
+                Types.jobId.of(jobId),
+                Types.jobUri.of(jobUri),
+                Types.jobPrinterUri.of(printerUri),
+                Types.jobState.of(JobState.pending),
+                Types.jobStateReasons.of("job-incoming")
             )
         )
 
