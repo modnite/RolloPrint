@@ -392,9 +392,10 @@ class IppServer(
                 Types.finishingsSupported.of(Finishing.none),
                 Types.outputBinDefault.of("face-down"),
                 Types.outputBinSupported.of("face-down"),
-                Types.mediaSupported.of("na_index-4x6_4x6in", "na_letter_8.5x11in"),
+                Types.mediaSupported.of("na_index-4x6_4x6in", "oe_4x6-label_4x6in", "custom_min_4x6in", "na_letter_8.5x11in", "iso_a4_210x297mm"),
                 Types.mediaDefault.of("na_index-4x6_4x6in"),
                 Types.mediaReady.of("na_index-4x6_4x6in"),
+                Types.pdfVersionsSupported.of("none", "1.4", "1.5", "1.6", "1.7"),
                 Types.mediaColDatabase.of(mediaColDatabase),
                 Types.mediaColDefault.of(mediaColDefault),
                 Types.printerResolutionSupported.of(Resolution(203, 203, ResolutionUnit.dotsPerInch)),
@@ -407,7 +408,7 @@ class IppServer(
                 Types.printerUriSupported.of(printerUri),
                 Types.uriAuthenticationSupported.of("none"),
                 Types.uriSecuritySupported.of("none"),
-                Types.pdlOverrideSupported.of("not-attempted")
+                Types.pdlOverrideSupported.of("attempted")
             )
         )
 
