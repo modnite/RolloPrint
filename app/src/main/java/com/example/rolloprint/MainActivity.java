@@ -174,6 +174,17 @@ public class MainActivity extends AppCompatActivity {
         Button btnDumpLogs = findViewById(R.id.btnDumpLogs);
         tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
 
+        if (savedInstanceState != null) {
+            String savedLog = savedInstanceState.getString("SAVED_LOG_TEXT", "");
+            if (!savedLog.isEmpty()) {
+                tvLog.setText(savedLog);
+            }
+            boolean savedExpanded = savedInstanceState.getBoolean("SAVED_LOG_EXPANDED", false);
+            if (savedExpanded && scrollViewLog != null) {
+                scrollViewLog.setVisibility(View.VISIBLE);
+            }
+        }
+
         ImageButton btnSettings = findViewById(R.id.btnSettings);
         btnSettings.setOnClickListener(v -> {
             log("[UI_EVENT] Clicked Settings cog wheel button.");
@@ -302,15 +313,17 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
 
-        String appVersion = "2.1.1";
+        String appVersion = "2.1.2";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
 
         tvHeaderVersion.setText("v" + appVersion);
 
-        log("RolloPrint v" + appVersion + " Loaded.");
-        log("Ready to print 4x6 PDF labels.");
+        if (savedInstanceState == null) {
+            log("RolloPrint v" + appVersion + " Loaded.");
+            log("Ready to print 4x6 PDF labels.");
+        }
 
         // Start continuous 1.5s hardware status polling loop (independent of Print Server state)
         pollHandler.postDelayed(pollRunnable, 500);
@@ -334,6 +347,17 @@ public class MainActivity extends AppCompatActivity {
 
         // Check if app was launched via Share / Open PDF intent
         handleIncomingIntent(getIntent());
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (tvLog != null) {
+            outState.putString("SAVED_LOG_TEXT", tvLog.getText().toString());
+        }
+        if (scrollViewLog != null) {
+            outState.putBoolean("SAVED_LOG_EXPANDED", scrollViewLog.getVisibility() == View.VISIBLE);
+        }
     }
 
     private void applyAppTheme(int themeMode) {

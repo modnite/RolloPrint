@@ -4,6 +4,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.1.2` — September 5, 2026 at 11:30 PM
+- **Preserved Activity Log Console Across Theme Recreations**: Added `onSaveInstanceState` and `onRestoreInstanceState` handlers in `MainActivity.java`. Changing app theme or rotating screen now 100% preserves the Activity Console log history (`tvLog`) and expanded/collapsed view states.
+- **Muted Repetitive Polling Logs**: Removed redundant 1.5s `[DIAGNOSTIC] Current Rollo Hardware States` console logs. Status logs are now emitted exclusively on genuine hardware state transitions (`[HARDWARE_STATE] Transitioned to:`), leaving the Activity Console quiet, readable, and uncluttered.
+
 ### `v2.1.1` — September 5, 2026 at 11:00 PM
 - **IPP Operation.createJob Response Handler**: Implemented RFC 8011 `Create-Job` operation handling returning assigned `job-id`, `job-uri`, and `job-state` attributes in `jobAttributes`. Eliminates CUPS `pdftopdf stopped with status 1` and `universal filter failed` errors on Linux KDE Plasma.
 

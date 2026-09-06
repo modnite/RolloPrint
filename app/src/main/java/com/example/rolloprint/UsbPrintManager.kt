@@ -333,8 +333,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
     fun runPrinterDiagnosticsAsync() {
         executor.execute {
-            val states = pollHardwareStatus()
-            logger("[DIAGNOSTIC] Current Rollo Hardware States: ${states.joinToString(", ")}")
+            pollHardwareStatus()
         }
     }
 
