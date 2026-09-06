@@ -14,7 +14,9 @@ import android.hardware.usb.UsbManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -68,6 +70,17 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences prefs;
     private boolean isServiceBound = false;
     private boolean isUpdatingSwitchProgrammatically = false;
+
+    private final Handler pollHandler = new Handler(Looper.getMainLooper());
+    private final Runnable pollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (printManager != null) {
+                printManager.runPrinterDiagnosticsAsync();
+            }
+            pollHandler.postDelayed(this, 1500); // Continuous 1.5s hardware status poll
+        }
+    };
 
     private final ActivityResultLauncher<Intent> pdfPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -289,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
 
-        String appVersion = "2.0.4";
+        String appVersion = "2.1.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -299,8 +312,8 @@ public class MainActivity extends AppCompatActivity {
         log("RolloPrint v" + appVersion + " Loaded.");
         log("Ready to print 4x6 PDF labels.");
 
-        // Immediately poll hardware status on launch so status badge updates in 0.1s
-        printManager.runPrinterDiagnosticsAsync();
+        // Start continuous 1.5s hardware status polling loop (independent of Print Server state)
+        pollHandler.postDelayed(pollRunnable, 500);
 
         appUpdateManager = new AppUpdateManager(
                 this,
@@ -391,7 +404,7 @@ public class MainActivity extends AppCompatActivity {
                 themeName = "Light theme";
             }
             prefs.edit().putInt("PREF_APP_THEME", newTheme).apply();
-            log("[UI_EVENT] Selected theme option: " + themeName);
+            log("[UI_EVENT] App theme changed to: " + themeName);
             applyAppTheme(newTheme);
         });
 
@@ -698,6 +711,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        pollHandler.removeCallbacks(pollRunnable);
         if (isServiceBound) {
             unbindService(serviceConnection);
             isServiceBound = false;

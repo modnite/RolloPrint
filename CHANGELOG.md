@@ -4,6 +4,11 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.1.0` — September 5, 2026 at 10:30 PM
+- **Linux CUPS `pdftopdf` Compatibility Descriptors**: Added missing IPP Everywhere attributes (`media-supported`, `media-ready`, `media-default`, `media-type-supported`, `pdf-versions-supported`, `printer-device-id`) to `IppServer.kt`. Resolves CUPS `universal filter failed` and `pdftopdf stopped with status 1` errors on Linux KDE Plasma.
+- **Continuous 1.5s Hardware Polling Loop**: Decoupled hardware status polling from `PrintServerService`. Background USB status polling runs continuously every 1.5 seconds from app launch regardless of whether the Print Server is ON or OFF, updating status badges in <1.5s.
+- **Full-Width RadioButton Touch Targets**: Added `clickable="true"`, `focusable="true"`, and `background="?attr/selectableItemBackground"` to Theme option RadioButtons in `dialog_settings.xml`. Tapping anywhere across the full width of the row selects the theme cleanly.
+
 ### `v2.0.4` — September 5, 2026 at 10:00 PM
 - **USB Interface Claim Retry Loop**: Added a 300ms retry loop on `connection.claimInterface(usbInterface, true)` in `UsbPrintManager.kt`. Eliminates interface lockouts and spurious `UNKNOWN` state transitions when rapidly starting/stopping background services or re-plugging USB OTG docks.
 - **Full-Width RadioButton Touch Bounds**: Set `clickable="true"`, `focusable="true"`, and `background="?attr/selectableItemBackground"` on Theme options in `dialog_settings.xml`. Tapping anywhere across the full width of the row selects the theme cleanly.
