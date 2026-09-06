@@ -45,6 +45,7 @@ import java.net.URI
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -61,6 +62,7 @@ class IppServer(
     private var isRunning = false
     private val serverExecutor = Executors.newCachedThreadPool()
     private val jobIdCounter = AtomicInteger(1)
+    private val activeJobMap = ConcurrentHashMap<Int, Int>()
 
     companion object {
         const val PORT = 8631
@@ -176,11 +178,12 @@ class IppServer(
                     }
                     Operation.createJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
+                        activeJobMap[requestId] = jobId
                         logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp")
                         sendCreateJobResponse(socket, version, requestId, jobId)
                     }
                     Operation.sendDocument, Operation.printJob -> {
-                        val jobId = jobIdCounter.getAndIncrement()
+                        val jobId = activeJobMap.remove(requestId) ?: jobIdCounter.getAndIncrement()
                         logger("[IPP] Print-Job / Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
 
                         sendPrintJobResponse(socket, version, requestId, jobId)
@@ -347,6 +350,8 @@ class IppServer(
             mediaRightMargin = 0
         )
 
+        // DUMMY SINK ARCHITECTURE: Always report printerState = idle and printerStateReasons = none to network clients.
+        // The server takes full ownership of jobs and decides when/how to print them on hardware.
         val printerGroup = MutableAttributeGroup(
             Tag.printerAttributes,
             listOf(
@@ -466,8 +471,8 @@ class IppServer(
                 Types.jobId.of(jobId),
                 Types.jobUri.of(jobUri),
                 Types.jobPrinterUri.of(printerUri),
-                Types.jobState.of(JobState.pending),
-                Types.jobStateReasons.of("job-incoming")
+                Types.jobState.of(JobState.completed),
+                Types.jobStateReasons.of("job-completed-successfully")
             )
         )
 
@@ -493,8 +498,8 @@ class IppServer(
             Tag.jobAttributes,
             listOf(
                 Types.jobId.of(jobId),
-                Types.jobState.of(JobState.processing),
-                Types.jobStateReasons.of("job-printing")
+                Types.jobState.of(JobState.completed),
+                Types.jobStateReasons.of("job-completed-successfully")
             )
         )
 

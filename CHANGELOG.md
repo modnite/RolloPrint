@@ -4,6 +4,11 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.3.0` — September 6, 2026 at 2:00 AM
+- **Dummy Sink Architecture (Mask Hardware State from Clients)**: Configured `IppServer.kt` to always report `printerState = PrinterState.idle` and `printerStateReasons = ["none"]` to network clients. Clients receive immediate job acceptance (`JobState.completed`) and hand off payloads cleanly without client-side filter halts or "Out of Paper" popups.
+- **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
+- **Universal Android Default Print Service Auto-Discovery**: Configured full mDNS TXT descriptors (`kind`, `URF`, `papercustom`, `pdl`) in `PrintServerService.kt`. Android Default Print Service, Mopria, iOS AirPrint, and Linux CUPS auto-discover `Rollo Printer` as a native networked label printer.
+
 ### `v2.2.1` — September 6, 2026 at 1:30 AM
 - **Linux CUPS Page Size Attribute Alignment**: Added top-level `mediaSupported` array (`na_index-4x6_4x6in`, `oe_4x6-label_4x6in`, `custom_min_4x6in`, `na_letter_8.5x11in`, `iso_a4_210x297mm`) and `pdfVersionsSupported` to `IppServer.kt`. Resolves Linux CUPS `pdftopdf` page-size matching filter crashes on Linux KDE Plasma.
 - **Surgical `Operation.createJob` Integration**: Preserved the lightweight `v1.8.1` IPP Everywhere response architecture while returning assigned `job-id` attributes for `createJob` requests.
