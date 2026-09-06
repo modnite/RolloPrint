@@ -181,15 +181,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             val connection = usbManager.openDevice(device) ?: return false
             try {
                 val usbInterface = device.getInterface(0)
-                var claimed = false
-                for (attempt in 0..2) {
-                    if (connection.claimInterface(usbInterface, true)) {
-                        claimed = true
-                        break
-                    }
-                    Thread.sleep(100)
-                }
-                if (!claimed) return false
+                if (!connection.claimInterface(usbInterface, true)) return false
 
                 val outEndpoint = (0 until usbInterface.endpointCount)
                     .map { usbInterface.getEndpoint(it) }
@@ -238,16 +230,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
             try {
                 val usbInterface = device.getInterface(0)
-                var claimed = false
-                for (attempt in 0..2) {
-                    if (connection.claimInterface(usbInterface, true)) {
-                        claimed = true
-                        break
-                    }
-                    Thread.sleep(100)
-                }
-
-                if (!claimed) {
+                if (!connection.claimInterface(usbInterface, true)) {
                     val newState = setOf(HardwareState.UNKNOWN)
                     updateHardwareState(newState)
                     return newState
@@ -333,7 +316,8 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
     fun runPrinterDiagnosticsAsync() {
         executor.execute {
-            pollHardwareStatus()
+            val states = pollHardwareStatus()
+            logger("[DIAGNOSTIC] Current Rollo Hardware States: ${states.joinToString(", ")}")
         }
     }
 
@@ -368,16 +352,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
             try {
                 val usbInterface = device.getInterface(0)
-                var claimed = false
-                for (attempt in 0..2) {
-                    if (connection.claimInterface(usbInterface, true)) {
-                        claimed = true
-                        break
-                    }
-                    Thread.sleep(100)
-                }
-
-                if (!claimed) {
+                if (!connection.claimInterface(usbInterface, true)) {
                     logger("ERROR: Interface Busy.")
                     return false
                 }

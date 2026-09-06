@@ -71,17 +71,6 @@ public class MainActivity extends AppCompatActivity {
     private boolean isServiceBound = false;
     private boolean isUpdatingSwitchProgrammatically = false;
 
-    private final Handler pollHandler = new Handler(Looper.getMainLooper());
-    private final Runnable pollRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (printManager != null) {
-                printManager.runPrinterDiagnosticsAsync();
-            }
-            pollHandler.postDelayed(this, 1500); // Continuous 1.5s hardware status poll
-        }
-    };
-
     private final ActivityResultLauncher<Intent> pdfPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -313,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
 
-        String appVersion = "2.1.3";
+        String appVersion = "2.1.4";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -324,9 +313,6 @@ public class MainActivity extends AppCompatActivity {
             log("RolloPrint v" + appVersion + " Loaded.");
             log("Ready to print 4x6 PDF labels.");
         }
-
-        // Start continuous 1.5s hardware status polling loop (independent of Print Server state)
-        pollHandler.postDelayed(pollRunnable, 500);
 
         appUpdateManager = new AppUpdateManager(
                 this,
@@ -735,7 +721,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        pollHandler.removeCallbacks(pollRunnable);
         if (isServiceBound) {
             unbindService(serviceConnection);
             isServiceBound = false;
