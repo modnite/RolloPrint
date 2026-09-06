@@ -4,6 +4,11 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.0.2` — September 5, 2026 at 9:00 PM
+- **Pinned Dialog Button Bar & Internal List Scrolling**: Re-structured `dialog_queue_manager.xml` using `layout_weight="1"` on `rvQueueJobs`. The bottom action buttons (`Print all`, `Clear all`, `Done`) remain permanently pinned at the bottom with full height regardless of how many jobs populate the queue.
+- **TextInput Overlapping Hint Fix**: Removed duplicate edit hints from `TextInputEditText` inside `dialog_settings.xml`. Material 3 `TextInputLayout` floating hints now animate smoothly without text overlapping.
+- **Full-Width Theme Touch Targets**: Set `android:layout_width="match_parent"` and vertical padding on Theme option radio buttons (`rbThemeSystem`, `rbThemeDark`, `rbThemeLight`), enabling instant selection by tapping anywhere across the full width of the row.
+
 ### `v2.0.1` — September 5, 2026 at 8:30 PM
 - **App Theme Section Expansion Fix**: Fixed click listener binding for Section 1 ("App theme") in `showSettingsDialog()`. Expanding and collapsing options (`System default`, `Dark theme`, `Light theme`) now works smoothly with animated arrow indicators.
 - **Detailed UI Event Logging (`[UI_EVENT]`)**: Added comprehensive logging for every button tap, switch toggle, radio selection, and section expansion across the app interface for live diagnostic visibility.

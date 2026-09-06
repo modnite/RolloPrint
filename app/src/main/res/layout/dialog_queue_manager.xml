@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="20dp"
     android:background="?attr/colorSurface">
 
     <LinearLayout
@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="16dp">
+        android:layout_marginBottom="12dp">
 
         <TextView
             android:layout_width="0dp"
@@ -29,7 +29,7 @@
             android:layout_height="40dp"
             android:src="@drawable/ic_sort"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Toggle sort order"
+            android:contentDescription="@string/sort_oldest_first"
             app:tint="?attr/colorOnSurface" />
     </LinearLayout>
 
@@ -44,21 +44,23 @@
         android:textColor="?attr/colorOnSurfaceVariant"
         android:visibility="gone" />
 
-    <!-- RecyclerView for Queued Jobs -->
+    <!-- RecyclerView for Queued Jobs with layout_weight="1" -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvQueueJobs"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:scrollbars="vertical"
         android:clipToPadding="false"
         android:paddingVertical="4dp" />
 
+    <!-- Pinned Bottom Action Button Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginTop="20dp">
+        android:layout_marginTop="16dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnPrintAllQueue"
@@ -68,8 +70,8 @@
             android:layout_weight="1"
             android:insetLeft="0dp"
             android:insetRight="0dp"
-            android:paddingHorizontal="4dp"
-            android:textSize="13sp"
+            android:paddingHorizontal="2dp"
+            android:textSize="12sp"
             android:text="@string/print_all"
             android:layout_marginEnd="6dp" />
 
@@ -81,8 +83,8 @@
             android:layout_weight="1"
             android:insetLeft="0dp"
             android:insetRight="0dp"
-            android:paddingHorizontal="4dp"
-            android:textSize="13sp"
+            android:paddingHorizontal="2dp"
+            android:textSize="12sp"
             android:text="@string/clear_all"
             android:layout_marginEnd="6dp" />
 
@@ -94,8 +96,8 @@
             android:layout_weight="1"
             android:insetLeft="0dp"
             android:insetRight="0dp"
-            android:paddingHorizontal="4dp"
-            android:textSize="13sp"
+            android:paddingHorizontal="2dp"
+            android:textSize="12sp"
             android:text="@string/done" />
     </LinearLayout>
 

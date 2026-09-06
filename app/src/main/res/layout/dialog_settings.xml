@@ -77,20 +77,23 @@
 
                         <RadioButton
                             android:id="@+id/rbThemeSystem"
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:paddingVertical="10dp"
                             android:text="@string/theme_system" />
 
                         <RadioButton
                             android:id="@+id/rbThemeDark"
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:paddingVertical="10dp"
                             android:text="@string/theme_dark" />
 
                         <RadioButton
                             android:id="@+id/rbThemeLight"
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:paddingVertical="10dp"
                             android:text="@string/theme_light" />
                     </RadioGroup>
                 </LinearLayout>
@@ -287,8 +290,7 @@
                             android:id="@+id/etEtherpadUrl"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="textUri"
-                            android:hint="http://example.com:9001/p/notepad" />
+                            android:inputType="textUri" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
