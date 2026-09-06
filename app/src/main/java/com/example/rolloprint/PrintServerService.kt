@@ -124,6 +124,7 @@ class PrintServerService : Service() {
 
     private fun registerNsdService(logger: (String) -> Unit) {
         try {
+            unregisterNsdService() // Ensure previous registration listener is safely cleared
             nsdManager = getSystemService(NSD_SERVICE) as NsdManager
             val serviceInfo = NsdServiceInfo().apply {
                 serviceName = SERVICE_NAME
@@ -133,7 +134,10 @@ class PrintServerService : Service() {
                 setAttribute("ty", "Rollo Thermal Printer 4x6")
                 setAttribute("product", "(Rollo Thermal Printer 4x6)")
                 setAttribute("rp", "ipp/print")
-                setAttribute("pdl", "image/pwg-raster,application/pdf")
+                setAttribute("pdl", "application/pdf,image/pwg-raster")
+                setAttribute("kind", "document,label")
+                setAttribute("URF", "CP1,SM1,RS203")
+                setAttribute("papercustom", "4x6in")
                 setAttribute("qtotal", "1")
                 setAttribute("printer-state", "3")
                 setAttribute("printer-type", "0x4000000")
@@ -218,6 +222,7 @@ class PrintServerService : Service() {
         val stopIntent = Intent(this, PrintServerService::class.java).apply {
             action = ACTION_STOP
         }
+
         val stopPendingIntent = PendingIntent.getService(
             this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE
         )

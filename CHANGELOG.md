@@ -4,6 +4,9 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v2.1.7` — September 6, 2026 at 12:00 AM
+- **mDNS Service Registration Uniqueness & Full AirPrint Descriptors**: Added automatic pre-cleanup of previous NSD registration listeners in `PrintServerService.kt`. Ensures the mDNS service name remains strictly `"Rollo Printer"` (never `"Rollo Printer (3)"`), allowing `lpadmin -v "dnssd://Rollo%20Printer._ipp._tcp.local/ipp/print"` and Linux `driverless -d` to resolve the printer instantly. Added AirPrint TXT descriptors (`kind`, `URF`, `papercustom`).
+
 ### `v2.1.2` — September 5, 2026 at 11:30 PM
 - **Preserved Activity Log Console Across Theme Recreations**: Added `onSaveInstanceState` and `onRestoreInstanceState` handlers in `MainActivity.java`. Changing app theme or rotating screen now 100% preserves the Activity Console log history (`tvLog`) and expanded/collapsed view states.
 - **Muted Repetitive Polling Logs**: Removed redundant 1.5s `[DIAGNOSTIC] Current Rollo Hardware States` console logs. Status logs are now emitted exclusively on genuine hardware state transitions (`[HARDWARE_STATE] Transitioned to:`), leaving the Activity Console quiet, readable, and uncluttered.
