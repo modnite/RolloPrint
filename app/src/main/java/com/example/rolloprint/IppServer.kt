@@ -177,17 +177,21 @@ class IppServer(
                     Operation.createJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
                         logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp")
+                        // Non-blocking: Immediately write HTTP 200 response to client
                         sendCreateJobResponse(socket, version, requestId, jobId)
                     }
                     Operation.sendDocument, Operation.printJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
                         logger("[IPP] Print-Job / Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
 
+                        // Non-blocking: Immediately write HTTP 200 response to client
                         sendPrintJobResponse(socket, version, requestId, jobId)
 
                         val docData = extractDocumentBytes(bodyData)
                         if (docData.isNotEmpty()) {
                             processIncomingDocumentPayload(docData, jobId, clientIp)
+                        } else {
+                            logger("[IPP] WARNING: Document payload extracted from Send-Document was empty.")
                         }
                     }
                     Operation.getJobAttributes -> {
@@ -285,6 +289,12 @@ class IppServer(
         val pdfStart = findByteSequence(data, pdfHeader)
         if (pdfStart != -1) {
             return data.copyOfRange(pdfStart, data.size)
+        }
+
+        val psHeader = "%!PS-Adobe".toByteArray()
+        val psStart = findByteSequence(data, psHeader)
+        if (psStart != -1) {
+            return data.copyOfRange(psStart, data.size)
         }
 
         val pngHeader = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte())
@@ -388,6 +398,7 @@ class IppServer(
                     "application/pdf",
                     "image/png",
                     "image/jpeg",
+                    "application/postscript",
                     "application/octet-stream"
                 ),
                 Types.documentFormatDefault.of("application/pdf"),
@@ -534,7 +545,7 @@ class IppServer(
         try {
             val textContent = String(data, 0, Math.min(data.size, 200), Charsets.US_ASCII)
 
-            if (textContent.contains("#PDF-BANNER", ignoreCase = true)) {
+            if (textContent.contains("#PDF-BANNER", ignoreCase = true) || textContent.contains("Test Page", ignoreCase = true)) {
                 logger("[IPP] Received CUPS Test Page Banner. Rendering RolloPrint 4x6 Test Label...")
                 val testPdf = createCupsTestPagePdf()
                 if (testPdf != null) {

@@ -313,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
 
-        String appVersion = "2.1.2";
+        String appVersion = "2.1.3";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}

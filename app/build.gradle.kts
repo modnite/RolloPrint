@@ -10,8 +10,8 @@ android {
         applicationId = "com.example.rolloprint"
         minSdk = 24
         targetSdk = 37
-        versionCode = 57
-        versionName = "2.1.2"
+        versionCode = 58
+        versionName = "2.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
