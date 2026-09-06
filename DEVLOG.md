@@ -1,6 +1,7 @@
 # RolloPrint — Development Journey & Engineering Progress Report
 
 > **Author:** Project Lead & Core Developer  
+> **Engineering Partner:** Gemini AI Coding Assistant  
 > **Repository:** [modnite/RolloPrint](https://github.com/modnite/RolloPrint)  
 > **Target Hardware:** Rollo X1038 / Thermal Printers via USB OTG Bulk Streaming  
 
@@ -8,11 +9,11 @@
 
 ## Introduction: Why I Built RolloPrint
 
-Commercial thermal printers like the **Rollo X1038** are absolute workhorses in logistics and shipping. However, printing 4x6 labels directly from an Android smartphone, tablet, or workstation over the local network without expensive proprietary bridges or closed cloud subscriptions was an unsolved problem. Most mobile print managers forced PDF rasterization down to wrong aspect ratios or required proprietary Windows print drivers.
+In our office, the Rollo thermal printer was originally plugged into our boss's Windows computer. When that PC went down, printing shipping labels ground to a halt. Whenever a label arrived via WhatsApp from our boss, I felt completely useless not being able to print it directly. Getting a label printed required someone in the office to physically plug the printer into their MacBook, log into WhatsApp Web, download the PDF, and print it.
 
-I set out to build **RolloPrint**: a zero-dependency, driverless IPP Everywhere print server and USB thermal utility for Android that runs natively, accepts PDF/raster jobs over standard AirPrint / IPP protocols, and streams bit-packed TSPL commands directly to the Rollo USB bulk endpoint.
+I rely heavily on my **Samsung Galaxy S23 paired with Samsung DeX and a docking station**. Whenever my phone is docked at my desk, I wanted a setup where it could connect directly to the Rollo printer over USB and host a wireless print server for the whole office.
 
-Here is the complete narrative history of how I built RolloPrint.
+To bring this vision to life rapidly, I paired up with my AI co-pilot (Gemini). Together, we architected **RolloPrint**: a zero-dependency, driverless IPP Everywhere print server and USB thermal utility for Android that runs natively, accepts PDF/raster jobs over standard AirPrint / IPP protocols, and streams bit-packed TSPL commands directly to the Rollo USB bulk endpoint.
 
 ---
 
@@ -24,7 +25,7 @@ My first goal was raw hardware communication over USB OTG. The Rollo X1038 expec
 1. **Bit-Packing & Luminance Thresholding:**
    I built a custom monochrome bitmap packer that iterates over $816 \times 1218$ pixel arrays, calculates ITU-R BT.601 luminance ($0.299R + 0.587G + 0.114B$), thresholding white vs black pixels, and packs 8 pixels per byte across 102 bytes per line ($102 \times 8 = 816$ pixels).
 2. **TSPL Command Packaging:**
-   I wrapped the monochrome bitmap bytes in a clean TSPL header:
+   Wrapped the monochrome bitmap bytes in a clean TSPL header:
    ```text
    SIZE 102 mm,153 mm
    REFERENCE 0,0
@@ -43,7 +44,7 @@ My first goal was raw hardware communication over USB OTG. The Rollo X1038 expec
 
 ## Milestone 1.1.0 – 1.2.0 — September 3, 2026: Driverless IPP Everywhere Server & HP `jIPP` Engine
 
-To allow any Linux (CUPS), macOS, or Windows PC on the office network to discover and print to the Rollo thermal printer without installing vendor drivers, I built an embedded HTTP/1.1 IPP Everywhere server listening on Port `8631`.
+To allow any Linux (CUPS), macOS, or Windows PC on the office network to discover and print to the Rollo thermal printer without installing vendor drivers, I implemented an embedded HTTP/1.1 IPP Everywhere server listening on Port `8631`.
 
 ### Highlights:
 - **HP `jipp-core` Integration (`com.hp.jipp:jipp-core:0.7.18`):** Replaced custom IPP frame serialization with HP's official, production-grade IPP Everywhere library for 100% PWG 5100.14 compliance.
@@ -54,7 +55,7 @@ To allow any Linux (CUPS), macOS, or Windows PC on the office network to discove
 
 ## Milestone 1.5.0 — September 4, 2026: Real-Time Hardware Status Polling & Onboard RAM Purging
 
-When paper ran out during printing, jobs would sit buffered in memory. I conducted hardware status investigations on the Rollo X1038 USB endpoints to achieve real-time hardware status detection.
+When paper ran out during printing, jobs would sit buffered in memory. Working with my AI pair-programmer, I conducted hardware status investigations on the Rollo X1038 USB endpoints to achieve real-time hardware status detection.
 
 ### Empirical Hardware Commands Discovered:
 - **Status Query (`<ESC>!?` / `0x1B, 0x21, 0x3F`):**
@@ -70,22 +71,23 @@ I wired status polling into a 3-second background thread in `PrintServerService`
 
 ---
 
-## Milestone 1.7.0 – 1.8.0 — September 4, 2026: Held Queue Manager & In-App Auto-Updates
+## Milestone 1.7.0 – 1.9.0 — September 4, 2026: Held Queue Manager, Pastebin Log Exporter & In-App Auto-Updates
 
 To prevent accidental printing when thermal paper is reinserted, I created `JobQueueManager`:
 - Jobs arriving while paper is out are held in app memory (`JobStatus.HELD`).
-- **Interactive Queue Manager Modal:** Added a "View queue" button opening an interactive modal where users can inspect held jobs, preview rendered label bitmaps, trigger "Print now", or clear jobs individually.
+- **Interactive Queue Manager Modal:** Added a "View queue" button opening an interactive modal where users can inspect held jobs, preview rendered label bitmaps, trigger "Print now", toggle sort orders ("Oldest first" ↕ "Newest first"), or clear jobs individually.
+- **Universal Etherpad / Pastebin Log Exporter:** Added a "Dump to pastebin" action button that posts activity logs directly to a self-hosted Etherpad instance via multipart form upload (`/p/<padID>/import`).
 - **In-App GitHub Auto-Updater (`AppUpdateManager`):** Built a background update checker querying GitHub Releases (`https://api.github.com/repos/modnite/RolloPrint/releases/latest`) every 15 minutes. Automatically prompts with release notes, downloads the new `RolloPrint.apk`, and launches Android's native installer via `FileProvider`.
 
 ---
 
-## Milestone 1.9.0 – 2.0.0 — September 4, 2026: Material 3 Design Overhaul & UI Refinements
+## Milestone 2.0.0 — September 4, 2026: Comprehensive UI/UX Design Overhaul & Material 3 Refinements
 
-In Milestone 2.0.0, I completed a comprehensive UI/UX overhaul to eliminate all visual friction, text wrapping, and layout inconsistencies:
+In Milestone 2.0.0, I completed a thorough UI/UX overhaul to eliminate all visual friction, text wrapping, and layout inconsistencies across phone portrait, landscape, tablet, and Samsung DeX desktop modes:
 
-1. **Single-Action Print Queue Card:** Streamlined `cardQueue` to feature a single prominent **"View queue"** button, giving the card title "Print queue" 80%+ width so it never truncates.
-2. **Equal-Width Dialog Action Buttons:** Applied `layout_weight="1"` across `Print all`, `Clear all`, and `Done` buttons in the Queue Manager modal, eliminating vertical button deformation.
-3. **Collapsible Settings Sections & Theme Selector:** Organized Settings into collapsible cards with **App theme** (System default, Dark theme, Light theme) positioned as Section 1 at the top.
+1. **Single-Action Print Queue Card:** Streamlined `cardQueue` to feature a single prominent **"View queue"** button, giving the card title "Print queue" 80%+ width so it never truncates into `Print qu...`.
+2. **Equal-Width Dialog Action Buttons:** Applied `layout_weight="1"` across `Print all`, `Clear all`, and `Done` buttons in `dialog_queue_manager.xml`, eliminating vertical button deformation.
+3. **Collapsible Settings Sections & Theme Selector:** Positioned **App theme** (System default, Dark theme, Light theme) as Section 1 at the top of the Settings popup.
 4. **Landscape & Samsung DeX Scrollability:** Wrapped the main dashboard in `NestedScrollView` to guarantee seamless vertical scrolling across phone portrait, landscape, tablet, and desktop DeX modes.
 
 ---

@@ -19,12 +19,15 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -122,7 +125,11 @@ public class MainActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences("rollo_prefs", MODE_PRIVATE);
 
-        // Enable edge-to-edge drawing so layout responds to system bars & display cutouts (camera punch hole)
+        // Apply saved App Theme before layout inflation
+        int savedTheme = prefs.getInt("PREF_APP_THEME", 0);
+        applyAppTheme(savedTheme);
+
+        // Enable edge-to-edge drawing so layout responds to system bars & display cutouts
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         setContentView(R.layout.activity_main);
@@ -155,10 +162,16 @@ public class MainActivity extends AppCompatActivity {
         tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
 
         ImageButton btnSettings = findViewById(R.id.btnSettings);
-        btnSettings.setOnClickListener(v -> showSettingsDialog());
+        btnSettings.setOnClickListener(v -> {
+            log("[UI_EVENT] Clicked Settings cog wheel button.");
+            showSettingsDialog();
+        });
 
         if (btnDumpLogs != null) {
-            btnDumpLogs.setOnClickListener(v -> dumpActivityLogsToEtherpad());
+            btnDumpLogs.setOnClickListener(v -> {
+                log("[UI_EVENT] Clicked 'Dump to pastebin' button.");
+                dumpActivityLogsToEtherpad();
+            });
         }
 
         printManager = new UsbPrintManager(this, text -> {
@@ -210,6 +223,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (btnViewQueue != null) {
             btnViewQueue.setOnClickListener(v -> {
+                log("[UI_EVENT] Clicked 'View queue' button.");
                 QueueManagerDialogFragment queueDialog = QueueManagerDialogFragment.Companion.newInstance(
                         jobQueueManager,
                         job -> {
@@ -225,16 +239,19 @@ public class MainActivity extends AppCompatActivity {
         ImageView ivLogExpandArrow = findViewById(R.id.ivLogExpandArrow);
 
         layoutLogHeaderClickable.setOnClickListener(v -> {
-            if (scrollViewLog.getVisibility() == View.VISIBLE) {
-                scrollViewLog.setVisibility(View.GONE);
-                ivLogExpandArrow.animate().rotation(0f).setDuration(200).start();
-            } else {
+            boolean expanding = scrollViewLog.getVisibility() != View.VISIBLE;
+            log("[UI_EVENT] Tapped Activity Log console header -> " + (expanding ? "EXPANDED" : "COLLAPSED"));
+            if (expanding) {
                 scrollViewLog.setVisibility(View.VISIBLE);
                 ivLogExpandArrow.animate().rotation(180f).setDuration(200).start();
+            } else {
+                scrollViewLog.setVisibility(View.GONE);
+                ivLogExpandArrow.animate().rotation(0f).setDuration(200).start();
             }
         });
 
         btnSelect.setOnClickListener(v -> {
+            log("[UI_EVENT] Clicked 'Select PDF & print' button.");
             log("[LOCAL] --- Direct TSPL Label Print ---");
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/pdf");
@@ -243,6 +260,7 @@ public class MainActivity extends AppCompatActivity {
 
         switchServer.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isUpdatingSwitchProgrammatically) return;
+            log("[UI_EVENT] Print Server switch toggled to: " + isChecked);
 
             if (isChecked) {
                 if (isServiceBound && printServerService != null) {
@@ -270,7 +288,7 @@ public class MainActivity extends AppCompatActivity {
 
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
-        
+
         String appVersion = "2.0.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
@@ -305,6 +323,20 @@ public class MainActivity extends AppCompatActivity {
         handleIncomingIntent(getIntent());
     }
 
+    private void applyAppTheme(int themeMode) {
+        switch (themeMode) {
+            case 1:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+                break;
+            case 2:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+                break;
+            default:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+                break;
+        }
+    }
+
     private void showSettingsDialog() {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_settings, null);
         MaterialSwitch switchLocal = dialogView.findViewById(R.id.switchLocalPreviewDialog);
@@ -313,6 +345,14 @@ public class MainActivity extends AppCompatActivity {
         TextInputEditText etEtherpadApiKey = dialogView.findViewById(R.id.etEtherpadApiKey);
         Button btnDiagnostics = dialogView.findViewById(R.id.btnDiagnostics);
         Button btnCheckUpdates = dialogView.findViewById(R.id.btnCheckUpdates);
+
+        View headerTheme = dialogView.findViewById(R.id.headerTheme);
+        View containerTheme = dialogView.findViewById(R.id.containerTheme);
+        ImageView ivArrowTheme = dialogView.findViewById(R.id.ivArrowTheme);
+        RadioGroup rgAppTheme = dialogView.findViewById(R.id.rgAppTheme);
+        RadioButton rbThemeSystem = dialogView.findViewById(R.id.rbThemeSystem);
+        RadioButton rbThemeDark = dialogView.findViewById(R.id.rbThemeDark);
+        RadioButton rbThemeLight = dialogView.findViewById(R.id.rbThemeLight);
 
         View headerPreviewOptions = dialogView.findViewById(R.id.headerPreviewOptions);
         View containerPreviewOptions = dialogView.findViewById(R.id.containerPreviewOptions);
@@ -326,9 +366,34 @@ public class MainActivity extends AppCompatActivity {
         View containerDiagnostics = dialogView.findViewById(R.id.containerDiagnostics);
         ImageView ivArrowDiagnostics = dialogView.findViewById(R.id.ivArrowDiagnostics);
 
-        setupCollapsibleSection(headerPreviewOptions, containerPreviewOptions, ivArrowPreview);
-        setupCollapsibleSection(headerEtherpad, containerEtherpad, ivArrowEtherpad);
-        setupCollapsibleSection(headerDiagnostics, containerDiagnostics, ivArrowDiagnostics);
+        setupCollapsibleSection(headerTheme, containerTheme, ivArrowTheme, "App theme");
+        setupCollapsibleSection(headerPreviewOptions, containerPreviewOptions, ivArrowPreview, "Print preview options");
+        setupCollapsibleSection(headerEtherpad, containerEtherpad, ivArrowEtherpad, "Pastebin settings");
+        setupCollapsibleSection(headerDiagnostics, containerDiagnostics, ivArrowDiagnostics, "Diagnostics & maintenance");
+
+        int savedTheme = prefs.getInt("PREF_APP_THEME", 0);
+        if (savedTheme == 1) {
+            rbThemeDark.setChecked(true);
+        } else if (savedTheme == 2) {
+            rbThemeLight.setChecked(true);
+        } else {
+            rbThemeSystem.setChecked(true);
+        }
+
+        rgAppTheme.setOnCheckedChangeListener((group, checkedId) -> {
+            int newTheme = 0;
+            String themeName = "System default";
+            if (checkedId == R.id.rbThemeDark) {
+                newTheme = 1;
+                themeName = "Dark theme";
+            } else if (checkedId == R.id.rbThemeLight) {
+                newTheme = 2;
+                themeName = "Light theme";
+            }
+            prefs.edit().putInt("PREF_APP_THEME", newTheme).apply();
+            log("[UI_EVENT] Selected theme option: " + themeName);
+            applyAppTheme(newTheme);
+        });
 
         boolean showLocal = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
         boolean showNetwork = prefs.getBoolean("PREF_NETWORK_PREVIEW", false);
@@ -346,23 +411,24 @@ public class MainActivity extends AppCompatActivity {
 
         switchLocal.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("PREF_LOCAL_PREVIEW", isChecked).apply();
-            log("[SETTINGS] Preview Local Prints set to: " + isChecked);
+            log("[UI_EVENT] [SETTINGS] Preview Local Prints set to: " + isChecked);
         });
 
         switchNetwork.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("PREF_NETWORK_PREVIEW", isChecked).apply();
-            log("[SETTINGS] Preview Network Prints set to: " + isChecked);
+            log("[UI_EVENT] [SETTINGS] Preview Network Prints set to: " + isChecked);
         });
 
         if (btnDiagnostics != null) {
             btnDiagnostics.setOnClickListener(v -> {
-                log("[DIAGNOSTIC] Running hardware status check...");
+                log("[UI_EVENT] [DIAGNOSTIC] Running hardware status check...");
                 printManager.runPrinterDiagnosticsAsync();
             });
         }
 
         if (btnCheckUpdates != null) {
             btnCheckUpdates.setOnClickListener(v -> {
+                log("[UI_EVENT] Clicked 'Check for updates' button.");
                 if (appUpdateManager != null) {
                     appUpdateManager.checkForUpdates(false);
                 }
@@ -372,6 +438,7 @@ public class MainActivity extends AppCompatActivity {
         new MaterialAlertDialogBuilder(this)
                 .setView(dialogView)
                 .setPositiveButton(R.string.done, (dialog, which) -> {
+                    log("[UI_EVENT] Clicked 'Done' button in settings dialog.");
                     if (etEtherpadUrl != null && etEtherpadUrl.getText() != null) {
                         String newUrl = etEtherpadUrl.getText().toString().trim();
                         prefs.edit().putString("PREF_ETHERPAD_URL", newUrl).apply();
@@ -389,26 +456,23 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void setupCollapsibleSection(View header, View container, ImageView arrow) {
+    private void setupCollapsibleSection(View header, View container, ImageView arrow, String sectionName) {
         if (header != null && container != null && arrow != null) {
             header.setOnClickListener(v -> {
-                if (container.getVisibility() == View.VISIBLE) {
-                    container.setVisibility(View.GONE);
-                    arrow.animate().rotation(0f).setDuration(200).start();
-                } else {
-                    container.setVisibility(View.VISIBLE);
-                    arrow.animate().rotation(180f).setDuration(200).start();
-                }
+                boolean willBeVisible = container.getVisibility() != View.VISIBLE;
+                container.setVisibility(willBeVisible ? View.VISIBLE : View.GONE);
+                arrow.animate().rotation(willBeVisible ? 180f : 0f).setDuration(200).start();
+                log("[UI_EVENT] Tapped '" + sectionName + "' section header -> " + (willBeVisible ? "EXPANDED" : "COLLAPSED"));
             });
         }
     }
 
     private void showUpdateAvailableDialog(String latestTag, String releaseNotes, String apkUrl) {
         new MaterialAlertDialogBuilder(this)
-                .setTitle("RolloPrint Update Available (v" + latestTag + ")")
+                .setTitle("RolloPrint update available (v" + latestTag + ")")
                 .setMessage(releaseNotes)
-                .setPositiveButton("Update Now", (dialog, which) -> {
-                    log("[UPDATE] Downloading RolloPrint v" + latestTag + "...");
+                .setPositiveButton(R.string.update_now, (dialog, which) -> {
+                    log("[UI_EVENT] User accepted update. Downloading v" + latestTag + "...");
                     if (appUpdateManager != null) {
                         appUpdateManager.downloadAndInstallApk(apkUrl, msg -> {
                             log(msg);
@@ -416,7 +480,9 @@ public class MainActivity extends AppCompatActivity {
                         });
                     }
                 })
-                .setNegativeButton("Ignore", null)
+                .setNegativeButton(R.string.ignore, (dialog, which) -> {
+                    log("[UI_EVENT] User ignored update v" + latestTag + ".");
+                })
                 .show();
     }
 

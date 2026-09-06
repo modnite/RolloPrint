@@ -6,20 +6,9 @@
 
 ---
 
-## Why RolloPrint Was Created
+## Development Journey & Progress Report
 
-This project was born out of a real-world office frustration.
-
-In our office, the Rollo thermal printer was originally plugged into our boss's Windows computer. When that PC went down, printing shipping labels ground to a halt. Whenever a label arrived via WhatsApp from our boss, I felt completely useless not being able to print it directly. Getting a label printed required someone in the office to physically plug the printer into their MacBook, log into WhatsApp Web, download the PDF, and print it.
-
-I rely heavily on my **Samsung Galaxy S23 paired with Samsung DeX and a docking station**. While my phone isn't docked 100% of the time, whenever it is docked at my desk, I wanted a setup where it could connect directly to the Rollo printer over USB and host a wireless print server for the whole office.
-
-Now with **RolloPrint**:
-- Whenever my phone is docked, it connects to the Rollo printer via USB and activates the print server.
-- Anyone in the office can share a PDF shipping label directly from **WhatsApp** on their phone or print wirelessly over Wi-Fi from their **MacBook, Windows PC, or Linux machine**.
-- No swapping cables, no downloading files on WhatsApp Web, and no driver installations required!
-
-While this is admittedly a very niche use-case, I wanted to publish **RolloPrint** open-source just in case anyone else ever needs to control or share this exact Rollo X1038 thermal printer using an Android device, whether locally over USB or wirelessly across a network.
+For the complete narrative history of how RolloPrint was designed, engineered, and built, see the [Development Progress Report (DEVLOG.md)](DEVLOG.md).
 
 ---
 
