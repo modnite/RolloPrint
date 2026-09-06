@@ -62,7 +62,8 @@ class IppServer(
     private var isRunning = false
     private val serverExecutor = Executors.newCachedThreadPool()
     private val jobIdCounter = AtomicInteger(1)
-    private val activeJobMap = ConcurrentHashMap<Int, Int>()
+    @Volatile
+    private var lastCreatedJobId: Int = 0
 
     companion object {
         const val PORT = 8631
@@ -178,13 +179,24 @@ class IppServer(
                     }
                     Operation.createJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
-                        activeJobMap[requestId] = jobId
+                        lastCreatedJobId = jobId
                         logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp")
                         sendCreateJobResponse(socket, version, requestId, jobId)
                     }
-                    Operation.sendDocument, Operation.printJob -> {
-                        val jobId = activeJobMap.remove(requestId) ?: jobIdCounter.getAndIncrement()
-                        logger("[IPP] Print-Job / Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
+                    Operation.sendDocument -> {
+                        val jobId = if (lastCreatedJobId > 0) lastCreatedJobId else jobIdCounter.getAndIncrement()
+                        logger("[IPP] Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
+
+                        sendPrintJobResponse(socket, version, requestId, jobId)
+
+                        val docData = extractDocumentBytes(bodyData)
+                        if (docData.isNotEmpty()) {
+                            processIncomingDocumentPayload(docData, jobId)
+                        }
+                    }
+                    Operation.printJob -> {
+                        val jobId = jobIdCounter.getAndIncrement()
+                        logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
 
                         sendPrintJobResponse(socket, version, requestId, jobId)
 
