@@ -1,0 +1,333 @@
+*GPDFileName: "Rollo.gpd"
+*GPDFileVersion: "1.4"
+*GPDSpecVersion: "1.0"
+*ModelName: "Rollo"
+*MasterUnits: PAIR(203, 203)
+*Include: "StdNames.gpd"
+*ResourceDLL: "RolloRES.DLL"
+*PrinterType: SERIAL
+
+*Feature: Orientation
+{
+    *rcNameID: =ORIENTATION_DISPLAY
+    *DefaultOption: PORTRAIT
+    *Option: PORTRAIT
+    {
+        *rcNameID: =PORTRAIT_DISPLAY
+    }
+    *Option: LANDSCAPE_CC270
+    {
+        *rcNameID: =LANDSCAPE_DISPLAY
+    }
+}
+*%******************************************************************************************
+*%                                      Input Bin
+*%******************************************************************************************
+*Feature: InputBin
+{
+	*rcNameID: =PAPER_SOURCE_DISPLAY
+	*DefaultOption: Option1
+	*Option: Option1
+	{
+		*rcNameID: 25001
+	}
+}
+
+*%******************************************************************************************
+*%                                      Resolution
+*%******************************************************************************************
+*Feature: Resolution
+{
+	*rcNameID: =RESOLUTION_DISPLAY
+	*DefaultOption: Option1
+	*Option: Option1
+	{
+		*Name: "8 dots per mm"
+	        *Command: CmdSendBlockData { *Cmd : ""}
+
+		*DPI: PAIR(203, 203)
+		*PinsPerLogPass: 24
+		*PinsPerPhysPass: 1
+		*TextDPI: PAIR(203, 203)
+		*SpotDiameter: 100
+    }
+}
+
+*%******************************************************************************************
+*%                                      Paper Size
+*%******************************************************************************************
+*Feature: PaperSize
+{
+	*rcNameID: =PAPER_SIZE_DISPLAY
+	*DefaultOption: Option8	
+	*Option: Option1
+	{		
+		*Name: "94mm x 145mm"
+		*PageDimensions: PAIR(752, 1160)
+		*PrintableArea: PAIR(752, 1160)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option2
+	{		
+		*Name: "94mm x 150mm"
+		*PageDimensions: PAIR(752, 1200)
+		*PrintableArea: PAIR(752, 1200)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option3
+	{		
+		*Name: "94mm x 190mm"
+		*PageDimensions: PAIR(752, 1520)
+		*PrintableArea: PAIR(752, 1520)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option4
+	{		
+		*Name: "94mm x 200mm"
+		*PageDimensions: PAIR(752, 1600)
+		*PrintableArea: PAIR(752, 1600)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option5
+	{		
+		*Name: "94mm x 210mm"
+		*PageDimensions: PAIR(752, 1680)
+		*PrintableArea: PAIR(752, 1680)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option6
+	{
+		*Name: "100mm x 113mm"
+		*PageDimensions: PAIR(800, 904)
+		*PrintableArea: PAIR(800, 904)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option7
+	{
+		*Name: "100mm x 145mm"
+		*PageDimensions: PAIR(800, 1160)
+		*PrintableArea: PAIR(800, 1160)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option8
+	{
+		*Name: "100mm x 150mm"
+		*PageDimensions: PAIR(800, 1200)
+		*PrintableArea: PAIR(800, 1200)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+
+	*Option: Option9
+	{
+		*Name: "100mm x 180mm"
+		*PageDimensions: PAIR(800, 1440)
+		*PrintableArea: PAIR(800, 1440)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+
+	*Option: Option10
+	{
+		*Name: "100mm x 190mm"
+		*PageDimensions: PAIR(800, 1520)
+		*PrintableArea: PAIR(800, 1520)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option11
+	{
+		*Name: "100mm x 200mm"
+		*PageDimensions: PAIR(800, 1600)
+		*PrintableArea: PAIR(800, 1600)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option12
+	{		
+		*Name: "100mm x 210mm"
+		*PageDimensions: PAIR(800, 1680)
+		*PrintableArea: PAIR(800, 1680)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option13
+	{
+		*Name: "105mm x 145mm"
+		*PageDimensions: PAIR(840, 1160)
+		*PrintableArea: PAIR(840, 1160)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option14
+	{
+		*Name: "105mm x 150mm"
+		*PageDimensions: PAIR(840, 1200)
+		*PrintableArea: PAIR(840, 1200)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option15
+	{
+		*Name: "105mm x 190mm"
+		*PageDimensions: PAIR(840, 1520)
+		*PrintableArea: PAIR(840, 1520)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option16
+	{
+		*Name: "105mm x 200mm"
+		*PageDimensions: PAIR(840, 1600)
+		*PrintableArea: PAIR(840, 1600)
+		*PrintableOrigin: PAIR(0, 0)
+	}
+	*Option: Option17
+	{		
+		*Name: "105mm x 210mm"
+		*PageDimensions: PAIR(840, 1680)
+		*PrintableArea: PAIR(840, 1680)
+		*PrintableOrigin: PAIR(0, 0)
+	}	
+	*Option: Option18
+	{		
+		*Name: "94mm x 187mm"
+		*PageDimensions: PAIR(752, 1496)
+		*PrintableArea: PAIR(752, 1496)
+		*PrintableOrigin: PAIR(0, 0)
+	}	
+
+	*Option: Option18
+	{		
+		*Name: "194mm x 87mm"
+		*PageDimensions: PAIR(752, 1496)
+		*PrintableArea: PAIR(752, 1496)
+		*PrintableOrigin: PAIR(0, 0)
+	}		
+
+
+	*Option: CUSTOMSIZE
+	{
+		*rcNameID: =USER_DEFINED_SIZE_DISPLAY
+		*MinSize: PAIR(24, 24)
+		*MaxSize: PAIR(840, 8000)
+		*MaxPrintableWidth: 840
+		*MinLeftMargin: 0
+		*TopMargin: 0
+		*BottomMargin: 0
+		*CenterPrintable?: TRUE
+		*CursorOrigin: PAIR(0, 0)
+	}
+}
+
+*Feature: Halftone
+{
+    *rcNameID: =HALFTONING_DISPLAY
+    *DefaultOption: HT_PATSIZE_2x2_M
+    *Option: HT_PATSIZE_AUTO
+    {
+        *rcNameID: =HT_AUTO_SELECT_DISPLAY
+    }
+    *Option: HT_PATSIZE_2x2_M
+    {
+        *Name:"None"
+    }
+*Ifdef: WINNT_50
+    *Option: HT_PATSIZE_SUPERCELL_M
+    {
+        *rcNameID: =HT_SUPERCELL_DISPLAY
+    }
+*Endif:
+    *Option: HT_PATSIZE_6x6_M
+    {
+        *rcNameID: =HT_DITHER6X6_DISPLAY
+    }
+    *Option: HT_PATSIZE_8x8_M
+    {
+        *rcNameID: =HT_DITHER8X8_DISPLAY
+    }
+}
+
+
+*Feature: ColorMode
+{
+	*rcNameID: =COLOR_PRINTING_MODE_DISPLAY
+	*DefaultOption: Mono
+	*Option: Mono
+	{
+		*rcNameID: =MONO_DISPLAY
+		*DevNumOfPlanes: 0
+		*DevBPP: 0
+		*IPCallbackID: 1
+		*Color?: FALSE
+	}
+}
+*%******************************************************************************************
+*%                General Printing Attributes(Capability, Color, Cursor)
+*%******************************************************************************************
+*%MemoryUsage: LIST(FONT, RASTER, VECTOR)
+*%OEMCustomData: ""
+*%OutputOrderReversed?: FALSE
+*%ReselectFont: LIST(AFTER_GRXDATA, AFTER_XMOVE, AFTER_FF)
+*%ReverseBandOrderForEvenPages?: FALSE
+*%ReverseBandOrderForEvenPages?: FALSE
+*%RotateFont?: FALSE
+*%RotateRaster?: FALSE
+*%TextCaps: TC_xxx
+
+
+*AbsXMovesRightOnly?: FALSE
+*%BadCursorMoveInGrxMode: LIST(X_PORTRAIT, X_LANDSCAPE, Y_PORTRAIT, Y_LANDSCAPE)
+*CursorXAfterCR: AT_PRINTABLE_X_ORIGIN
+*EjectPageWithFF?: TRUE
+*%LineSpacingMoveUnit: 1
+*%MaxLineSpacing: 0
+*UseSpaceForXMove?: FALSE
+*%XMoveThreshold: 0
+*XMoveUnit: 203
+*YMoveAttributes: SEND_CR_FIRST
+*YMoveThreshold: *
+*YMoveUnit: 203
+
+*%******************************************************************************************
+*%               Text Printing Attributes(Device, Downloaded, Simulated)
+*%******************************************************************************************
+
+*%******************************************************************************************
+*%                 Raster Printing Attributes(Compression, Emission)
+*%******************************************************************************************
+*CursorXAfterSendBlockData: AT_CURSOR_X_ORIGIN
+*CursorYAfterSendBlockData: NO_MOVE
+*OptimizeLeftBound?: FALSE
+*OutputDataFormat: H_BYTE
+*RasterSendAllData?: TRUE
+*%StripBlanks: TRAILING
+
+*%******************************************************************************************
+*%                             Vector Printing Attributes
+*%******************************************************************************************
+
+
+*%******************************************************************************************
+*%                       General Printing Commands(Color, Cursor)
+*%******************************************************************************************
+*Command: CmdCR: ""
+*Command: CmdLF: ""
+*Command: CmdFF: ""
+*Command: CmdXMoveAbsolute: ""
+*Command: CmdYMoveRelDown: ""
+
+*Command: CmdStartDoc
+{
+	*Order: DOC_SETUP.1
+	*Cmd: ""
+}
+*Command: CmdEndDoc
+{
+    *Order: DOC_FINISH.1
+    *Cmd: ""
+}
+*Command: CmdEndPage
+{
+    *Order: PAGE_FINISH.1
+    *Cmd: ""
+}
+*Command: CmdEndJob
+{
+    *Order: JOB_FINISH.1
+    *Cmd: ""
+}
+
+

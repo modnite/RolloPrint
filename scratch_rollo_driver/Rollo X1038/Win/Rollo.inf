@@ -1,0 +1,75 @@
+;
+;	Printer Installation File
+;
+;	 www.RolloPrinter.com
+; 		
+
+[Version]
+Signature="$Windows NT$"
+Provider=%ROLLO%
+ClassGUID={4D36E979-E325-11CE-BFC1-08002BE10318}
+Class=Printer
+CataLogFile =ROLLO.cat
+DriverVer = 09/19/2017,1.4.5.1
+
+;
+; Manufacturer section.
+;
+; This section lists all of the manufacturers
+; that we will display in the Dialog box
+;
+
+[Manufacturer]
+"ROLLO" = ROLLO,NTamd64
+
+;
+; Model Specifications Section
+;
+;[OEM URLS]
+;%ROLLO% = "http://www.RolloPrinter.com"
+
+[ROLLO]
+"Rollo Printer" = ROLLO_DRIVER,USBPRINT\PrinterThermalPrinte8903
+
+
+[ROLLO.NTamd64]
+"Rollo Printer" = ROLLO_DRIVER,USBPRINT\PrinterThermalPrinte8903
+
+;
+; Installer section(s) referenced above.
+;
+
+[ROLLO_DRIVER]
+CopyFiles=@ROLLORES.DLL,@ROLLO.INI,@ROLLOUNI.DLL,@ROLLOUI.DLL,@ROLLO.GPD
+DataSection=UNIDRV_DATA
+DataFile=ROLLO.GPD
+Include=NTPRINT.INF
+Needs=UNIDRV.OEM
+
+
+[DestinationDirs]
+DefaultDestDir=66000
+
+[SourceDisksNames]
+1 = %WinDir%,,,
+
+[SourceDisksFiles.x86]
+ROLLORES.dll = 1
+ROLLO.ini= 1
+ROLLOUNI.dll= 1
+ROLLOUI.DLL =1
+ROLLO.GPD = 1
+
+
+[SourceDisksFiles.amd64]
+ROLLORES.dll = 1
+ROLLO.ini= 1
+ROLLOUNI.dll= 1,amd64
+ROLLOUI.DLL =1,amd64
+ROLLO.GPD = 1
+
+
+
+[Strings]
+;PrinterClassName="Printers"
+ROLLO="Rollo"

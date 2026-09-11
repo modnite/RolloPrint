@@ -9,6 +9,15 @@ All notable milestone releases for the **RolloPrint** application are documented
 - **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
 - **Universal Android Default Print Service Auto-Discovery**: Configured full mDNS TXT descriptors (`kind`, `URF`, `papercustom`, `pdl`) in `PrintServerService.kt`. Android Default Print Service, Mopria, iOS AirPrint, and Linux CUPS auto-discover `Rollo Printer` as a native networked label printer.
 
+### `v3.0.0` — September 6, 2026 at 3:00 AM
+- **Official Rollo v1.8.4 Print Head Dot Width**: Updated `UsbPrintManager.kt` raster target width to `#define ROLLO_DOT_WIDTH 832` ($104 \text{ bytes} \times 8 = 832 \text{ dots}$ @ 203 DPI) with exact output centering across the print head, matching official Rollo Linux/Mac v1.8.4 (2024) drivers and AirPrint firmware back-ports.
+- **Official Rollo Thermal Power Protection (`rastertorollo.c`)**: Implemented official Rollo thermal head current protection. Bitmaps containing >100 consecutive dense black lines dynamically drop TSPL speed and density (`SPEED 4`, `DENSITY 6`) to protect the Rollo X1038 power supply from current starvation trips.
+- **OpenPrinting CUPS 2.4.x & AirPrint Alignment**: Configured `IppServer.kt` to mirror official OpenPrinting CUPS 2.4.x server attributes (`media-supported` for 4x6, 4x8, 2x1, Round labels; `pdf-versions-supported`; `pwg-raster-document-resolution-supported`).
+- **Clean Hardware Badge (Zero Log Pollution)**: Re-introduced `tvHardwareStatus` on `cardHeader`. Background status polling updates the UI header badge quietly without writing repetitive lines to the Activity Console. Hardware state is logged exclusively during genuine state transitions and simultaneously alongside job transfers (`[JOB_TRANSFER] ... | Hardware State: [READY]`).
+- **Session-Bound Log History Preservation**: Preserved Activity Console log text (`tvLog`) in memory across Activity recreations, theme changes, and screen rotations via `onSaveInstanceState`.
+- **Dedicated Settings Activity (`SettingsActivity.java`)**: Replaced modal settings popup with a full-screen `SettingsActivity` featuring a top Material Toolbar with back navigation.
+- **Light Mode System Bar Icon Awareness**: Applied `WindowInsetsControllerCompat` to dynamically invert status bar and navigation bar icons to dark icons in Light Mode, preventing white-on-white status bar icon washouts.
+
 ### `v2.5.0` — September 6, 2026 at 2:30 AM
 - **Dedicated Settings Activity (`SettingsActivity.java`)**: Replaced modal settings popup with a full-screen `SettingsActivity` featuring a top Material Toolbar with back navigation. Toggling themes or options no longer recreates or closes the settings UI.
 - **Light Mode System Bar Icon Awareness**: Applied `WindowInsetsControllerCompat` to dynamically invert status bar and navigation bar icons to dark icons in Light Mode, preventing white-on-white status bar icon washouts.

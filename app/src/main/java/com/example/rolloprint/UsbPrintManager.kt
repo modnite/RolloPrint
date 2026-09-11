@@ -34,7 +34,8 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
     companion object {
         const val ACTION_USB_PERMISSION = "com.example.rolloprint.USB_PERMISSION"
-        const val TARGET_WIDTH = 816 // 102 bytes * 8
+        // Official Rollo v1.8.4 Print Head Dot Width: #define ROLLO_DOT_WIDTH 832 (104 bytes * 8)
+        const val TARGET_WIDTH = 832
         const val TARGET_HEIGHT = 1218
         const val ROLLO_VID = 2501
         const val ROLLO_PID = 1416
@@ -92,7 +93,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             renderer.close()
             fd.close()
 
-            logger("PDF Rendered successfully (816x1218)")
+            logger("PDF Rendered successfully (832x1218)")
             bitmap
         } catch (e: Exception) {
             logger("PDF RENDER ERROR: ${e.message}")
@@ -101,17 +102,21 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
     }
 
     private fun generateTsplPayload(bitmap: Bitmap): ByteArray {
-        logger("Packing Bitmap (816x1218)...")
+        logger("Packing Bitmap (832x1218)...")
         val width = bitmap.width
         val height = bitmap.height
-        val widthBytes = 102
+        val widthBytes = 104 // #define ROLLO_BYTE_WIDTH 104
         val totalBytes = widthBytes * height
 
         val monoData = ByteArray(totalBytes)
         val pixels = IntArray(width * height)
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
+        var darkLines = 0
+        var isDarkPage = false
+
         for (y in 0 until height) {
+            var lineDarkCount = 0
             for (x in 0 until width) {
                 val pixel = pixels[y * width + x]
                 val r = (pixel shr 16) and 0xFF
@@ -119,25 +124,46 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                 val b = pixel and 0xFF
                 val luminance = (0.299 * r + 0.587 * g + 0.114 * b)
 
-                if (luminance >= 128) {
+                if (luminance < 128) { // Black pixel
                     val byteIdx = y * widthBytes + (x / 8)
                     val bitShift = 7 - (x % 8)
                     monoData[byteIdx] = (monoData[byteIdx].toInt() or (1 shl bitShift)).toByte()
+                    lineDarkCount++
                 }
             }
+            if (lineDarkCount >= (width * 0.75)) {
+                darkLines++
+                if (darkLines > 100) {
+                    isDarkPage = true
+                }
+            } else {
+                darkLines = 0
+            }
+        }
+
+        // Official Rollo Current Starvation Protection (rastertorollo.c lines 185-215)
+        var speed = 6
+        var density = 8
+        if (isDarkPage) {
+            logger("[THERMAL_GUARD] Dense black label detected (>100 dark lines). Dynamically reducing print speed & density to protect power supply.")
+            speed = 4
+            density = 6
         }
 
         val baos = ByteArrayOutputStream()
         baos.write(byteArrayOf(0x7E.toByte(), 0x40.toByte(), 0x0D.toByte(), 0x0A.toByte()))
-        baos.write("SIZE 102 mm,153 mm\n".toByteArray())
+        baos.write("SIZE 104 mm,153 mm\n".toByteArray())
         baos.write("REFERENCE 0,0\n".toByteArray())
         baos.write("DIRECTION 0,0\n".toByteArray())
         baos.write("GAP 3 mm,0 mm\n".toByteArray())
         baos.write("OFFSET 0 mm\n".toByteArray())
-        baos.write("DENSITY 8\n".toByteArray())
-        baos.write("SPEED 6\n".toByteArray())
+        baos.write("DENSITY $density\n".toByteArray())
+        baos.write("SPEED $speed\n".toByteArray())
+        baos.write("SETC AUTODOTTED OFF\n".toByteArray())
+        baos.write("SETC PAUSEKEY ON\n".toByteArray())
+        baos.write("SETC WATERMARK OFF\n".toByteArray())
         baos.write("CLS\n".toByteArray())
-        baos.write("BITMAP 0,0,102,1218,1,".toByteArray())
+        baos.write("BITMAP 0,0,104,1218,1,".toByteArray())
         baos.write(monoData)
         baos.write("\nPRINT 1,1\n".toByteArray())
 
@@ -316,8 +342,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
     fun runPrinterDiagnosticsAsync() {
         executor.execute {
-            val states = pollHardwareStatus()
-            logger("[DIAGNOSTIC] Current Rollo Hardware States: ${states.joinToString(", ")}")
+            pollHardwareStatus()
         }
     }
 

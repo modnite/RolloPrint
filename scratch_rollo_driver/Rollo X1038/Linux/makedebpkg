@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Make a Debian package.
+#
+# Usage:
+#
+#    ./makedebpkg
+#
+
+# Create a source sub-directory
+echo "Creating debian-source..."
+rm -rf debian-source
+mkdir debian-source
+cp config.guess config.sub configure debian-source
+for file in debian install-sh Makefile.in *.[ch] rollo-x1038.ppd; do
+    ln -s ../$file debian-source
+done
+
+# Run dpkg-buildpackage to build the package...
+echo "Building Debian package..."
+cd debian-source
+dpkg-buildpackage -uc -us -ui 
