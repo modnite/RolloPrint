@@ -1,7 +1,9 @@
 package com.example.rolloprint;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -11,6 +13,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -21,6 +24,8 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
+
+import java.io.File;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -121,14 +126,38 @@ public class SettingsActivity extends AppCompatActivity {
         etEtherpadUrl.setText(prefs.getString("PREF_ETHERPAD_URL", ""));
         etEtherpadApiKey.setText(prefs.getString("PREF_ETHERPAD_API_KEY", ""));
 
-        // Diagnostics & Update Buttons
+        // Diagnostics, Export Cache & Update Buttons
         Button btnDiagnostics = findViewById(R.id.btnDiagnostics);
+        Button btnExportCache = findViewById(R.id.btnExportCache);
         Button btnCheckUpdates = findViewById(R.id.btnCheckUpdates);
 
         if (btnDiagnostics != null) {
             btnDiagnostics.setOnClickListener(v -> {
                 Toast.makeText(this, "Running USB hardware scan...", Toast.LENGTH_SHORT).show();
                 finish(); // Return to MainActivity where full USB Bus Scan is output to tvLog
+            });
+        }
+
+        if (btnExportCache != null) {
+            int cacheCount = PrintHistoryCacheManager.getCachedFileCount(this);
+            btnExportCache.setText("Export Print Cache (" + cacheCount + " screenshots)");
+
+            btnExportCache.setOnClickListener(v -> {
+                File zipFile = PrintHistoryCacheManager.exportCacheZip(this);
+                if (zipFile != null && zipFile.exists()) {
+                    Uri contentUri = FileProvider.getUriForFile(
+                            this,
+                            getPackageName() + ".fileprovider",
+                            zipFile
+                    );
+                    Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                    shareIntent.setType("application/zip");
+                    shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                    shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(shareIntent, "Share Print Cache ZIP"));
+                } else {
+                    Toast.makeText(this, "No cached print screenshots found.", Toast.LENGTH_SHORT).show();
+                }
             });
         }
 

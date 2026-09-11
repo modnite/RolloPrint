@@ -86,8 +86,15 @@ class RawSocketServer(
                 val data = baos.toByteArray()
                 if (data.isNotEmpty()) {
                     val jobId = rawJobIdCounter.getAndIncrement()
-                    logger("[RAW_9100] Received ${data.size} bytes from $clientIp for Job #$jobId")
-                    processRawPayload(data, jobId, clientIp)
+                    val dataStr = String(data, 0, Math.min(data.size, 512), Charsets.US_ASCII).lowercase()
+                    val osFamily = when {
+                        dataStr.contains("mac") || dataStr.contains("apple") || dataStr.contains("darwin") -> "macos"
+                        dataStr.contains("win") || dataStr.contains("microsoft") -> "windows"
+                        dataStr.contains("linux") || dataStr.contains("cups") -> "linux"
+                        else -> "raw_client"
+                    }
+                    logger("[RAW_9100] Received ${data.size} bytes from $clientIp [$osFamily] for Job #$jobId")
+                    processRawPayload(data, jobId, clientIp, osFamily)
                 }
 
                 try { socket.close() } catch (_: Exception) {}
@@ -97,7 +104,7 @@ class RawSocketServer(
         }
     }
 
-    private fun processRawPayload(data: ByteArray, jobId: Int, clientIp: String) {
+    private fun processRawPayload(data: ByteArray, jobId: Int, clientIp: String, osFamily: String) {
         val tempPdfFile = File(context.cacheDir, "temp_raw_$jobId.pdf")
         try {
             val pdfHeader = "%PDF-".toByteArray()
@@ -105,13 +112,13 @@ class RawSocketServer(
             if (pdfStart != -1) {
                 val pdfBytes = data.copyOfRange(pdfStart, data.size)
                 FileOutputStream(tempPdfFile).use { it.write(pdfBytes) }
-                ingestPdfToLocalPrint(tempPdfFile, jobId, clientIp)
+                ingestPdfToLocalPrint(tempPdfFile, jobId, clientIp, osFamily)
                 return
             }
 
             // Fallback: Save raw data directly
             FileOutputStream(tempPdfFile).use { it.write(data) }
-            ingestPdfToLocalPrint(tempPdfFile, jobId, clientIp)
+            ingestPdfToLocalPrint(tempPdfFile, jobId, clientIp, osFamily)
         } catch (e: Exception) {
             logger("[RAW_9100] ERROR processing raw stream #$jobId: ${e.message}")
         } finally {
@@ -119,12 +126,13 @@ class RawSocketServer(
         }
     }
 
-    private fun ingestPdfToLocalPrint(pdfFile: File, jobId: Int, clientIp: String) {
+    private fun ingestPdfToLocalPrint(pdfFile: File, jobId: Int, clientIp: String, osFamily: String) {
         val uri = Uri.fromFile(pdfFile)
         val bitmap = printManager.renderPdfToBitmap(uri)
         if (bitmap != null) {
-            logger("[RAW_9100] Stream converted to 816x1218 bitmap. Adding RAW Job #$jobId to Print Queue...")
-            jobQueueManager.addJob(bitmap, "RAW Job #$jobId from $clientIp")
+            PrintHistoryCacheManager.saveJobScreenshot(context, bitmap, jobId, "raw_network", osFamily)
+            logger("[RAW_9100] Stream converted to 816x1218 bitmap. Adding RAW Job #$jobId [$osFamily] to Print Queue...")
+            jobQueueManager.addJob(bitmap, "RAW Job #$jobId ($osFamily)")
         } else {
             logger("[RAW_9100] ERROR: Failed to render bitmap for RAW Job #$jobId")
         }

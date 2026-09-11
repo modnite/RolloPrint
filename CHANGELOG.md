@@ -4,6 +4,12 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v3.1.0` — September 6, 2026 at 7:30 AM
+- **macOS Driverless AirPrint Discovery**: Registered AirPrint mDNS subtypes `_universal._sub._ipp._tcp.` and `_airprint._sub._ipp._tcp.` in `PrintServerService.kt` with full AirPrint TXT keys (`Color=F`, `Duplex=F`, `Copies=T`, `URF=CP1,SM1,RS203`, `pdl=application/pdf,image/pwg-raster,image/jpeg,image/png,application/postscript`). Eliminates macOS "Choose a Driver..." prompts completely.
+- **Smart Client OS Family Detection**: Inspects HTTP `User-Agent` headers, IPP attributes, and stream comments to detect client OS family (`macos`, `windows`, `linux`, `android`).
+- **Diagnostic JPEG Screenshot Cache Engine (`PrintHistoryCacheManager.kt`)**: Saves a compact JPEG screenshot of every rendered print job into `getExternalFilesDir("print_history_cache")` with filename format `job_<id>_<origin>_<osFamily>_<timestamp>.jpg`.
+- **Export Print Cache (.zip) Button**: Added a dedicated button in `SettingsActivity.java` to package all cached JPEGs into `print_cache_export.zip` for easy pulling/sharing.
+
 ### `v3.0.8` — September 6, 2026 at 7:00 AM
 - **TSPL BITMAP Bit Polarity Correction**: Fixed bit packing in `UsbPrintManager.kt`. Initialized monochrome buffer to `0xFF` (all white) and cleared black bits to `0`, restoring crisp black text/barcodes on white paper and eliminating printer power supply trips / reboots.
 - **Bitmap Heap Memory Recycling**: Added `bitmap.recycle()` calls in `printBitmapAsync` to free uncompressed $4\text{ MB}$ bitmap arrays immediately after TSPL encoding, eliminating app process crashes.

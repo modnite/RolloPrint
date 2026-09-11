@@ -163,6 +163,8 @@ class IppServer(
                     return@execute
                 }
 
+                val osFamily = detectOsFamily(headerText, bodyData)
+
                 // 3. Parse IPP Request Packet using HP jipp-core
                 val ippInputStream = IppInputStream(ByteArrayInputStream(bodyData))
                 val ippRequestPacket = ippInputStream.readPacket()
@@ -173,47 +175,47 @@ class IppServer(
 
                 when (operation) {
                     Operation.getPrinterAttributes -> {
-                        logger("[IPP] Get-Printer-Attributes request (req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Get-Printer-Attributes request (req-id=$requestId, v=$version) from $clientIp [$osFamily]")
                         sendGetPrinterAttributesResponse(socket, version, requestId)
                     }
                     Operation.validateJob -> {
-                        logger("[IPP] Validate-Job request (req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Validate-Job request (req-id=$requestId, v=$version) from $clientIp [$osFamily]")
                         sendSimpleIppResponse(socket, version, requestId, Status.successfulOk)
                     }
                     Operation.createJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
                         lastCreatedJobId = jobId
-                        logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp [$osFamily]")
                         sendCreateJobResponse(socket, version, requestId, jobId)
                     }
                     Operation.sendDocument -> {
                         val jobId = if (lastCreatedJobId > 0) lastCreatedJobId else jobIdCounter.getAndIncrement()
-                        logger("[IPP] Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp [$osFamily]")
 
                         sendPrintJobResponse(socket, version, requestId, jobId)
 
                         val docData = extractDocumentBytes(bodyData)
                         if (docData.isNotEmpty()) {
-                            processIncomingDocumentPayload(docData, jobId)
+                            processIncomingDocumentPayload(docData, jobId, osFamily)
                         }
                     }
                     Operation.printJob -> {
                         val jobId = jobIdCounter.getAndIncrement()
-                        logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp [$osFamily]")
 
                         sendPrintJobResponse(socket, version, requestId, jobId)
 
                         val docData = extractDocumentBytes(bodyData)
                         if (docData.isNotEmpty()) {
-                            processIncomingDocumentPayload(docData, jobId)
+                            processIncomingDocumentPayload(docData, jobId, osFamily)
                         }
                     }
                     Operation.getJobAttributes -> {
-                        logger("[IPP] Get-Job-Attributes request (req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Get-Job-Attributes request (req-id=$requestId, v=$version) from $clientIp [$osFamily]")
                         sendGetJobAttributesResponse(socket, version, requestId)
                     }
                     else -> {
-                        logger("[IPP] Operation $operation requested (req-id=$requestId, v=$version) from $clientIp")
+                        logger("[IPP] Operation $operation requested (req-id=$requestId, v=$version) from $clientIp [$osFamily]")
                         sendSimpleIppResponse(socket, version, requestId, Status.successfulOk)
                     }
                 }
@@ -224,6 +226,19 @@ class IppServer(
             } catch (e: Exception) {
                 logger("[IPP] Error handling client $clientIp: ${e.message}")
             }
+        }
+    }
+
+    private fun detectOsFamily(headerText: String, data: ByteArray): String {
+        val lowerHeader = headerText.lowercase()
+        val dataStr = String(data, 0, Math.min(data.size, 512), Charsets.US_ASCII).lowercase()
+
+        return when {
+            lowerHeader.contains("macintosh") || lowerHeader.contains("darwin") || lowerHeader.contains("mac os x") || lowerHeader.contains("cups/2.") && (dataStr.contains("mac") || dataStr.contains("apple")) -> "macos"
+            lowerHeader.contains("windows") || lowerHeader.contains("microsoft") || lowerHeader.contains("nt 10.0") || lowerHeader.contains("nt 11.0") -> "windows"
+            lowerHeader.contains("linux") || lowerHeader.contains("ubuntu") || lowerHeader.contains("debian") || lowerHeader.contains("cups") -> "linux"
+            lowerHeader.contains("android") -> "android"
+            else -> if (dataStr.contains("mac")) "macos" else "network"
         }
     }
 
@@ -572,7 +587,7 @@ class IppServer(
         } catch (_: Exception) {}
     }
 
-    private fun processIncomingDocumentPayload(data: ByteArray, jobId: Int) {
+    private fun processIncomingDocumentPayload(data: ByteArray, jobId: Int, osFamily: String) {
         val tempPdfFile = File(context.cacheDir, "temp_incoming_$jobId.pdf")
 
         try {
@@ -582,8 +597,8 @@ class IppServer(
             if (pdfStart != -1) {
                 val pdfBytes = data.copyOfRange(pdfStart, data.size)
                 FileOutputStream(tempPdfFile).use { it.write(pdfBytes) }
-                logger("[IPP] Saved PDF document (${pdfBytes.size} bytes) for Job #$jobId")
-                ingestPdfToLocalPrint(tempPdfFile, jobId)
+                logger("[IPP] Saved PDF document (${pdfBytes.size} bytes) for Job #$jobId [$osFamily]")
+                ingestPdfToLocalPrint(tempPdfFile, jobId, osFamily)
                 return
             }
 
@@ -598,9 +613,9 @@ class IppServer(
                 val imgBytes = data.copyOfRange(imgStart, data.size)
                 val bitmap = BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.size)
                 if (bitmap != null) {
-                    logger("[IPP] Extracted Image document for Job #$jobId. Converting to 4x6 PDF...")
+                    logger("[IPP] Extracted Image document for Job #$jobId [$osFamily]. Converting to 4x6 PDF...")
                     createPdfFromBitmap(bitmap, tempPdfFile)
-                    ingestPdfToLocalPrint(tempPdfFile, jobId)
+                    ingestPdfToLocalPrint(tempPdfFile, jobId, osFamily)
                     bitmap.recycle()
                     return
                 }
@@ -611,14 +626,14 @@ class IppServer(
             if (textContent.startsWith("#PDF-BANNER") || textContent.contains("default-testpage.pdf") || textContent.contains("Test Page", ignoreCase = true)) {
                 logger("[IPP] Received CUPS Test Page Banner. Rendering RolloPrint 4x6 Test Label...")
                 createCupsTestPagePdf(tempPdfFile)
-                ingestPdfToLocalPrint(tempPdfFile, jobId)
+                ingestPdfToLocalPrint(tempPdfFile, jobId, osFamily)
                 return
             }
 
             // 4. Fallback: Text/PostScript stream -> Convert to 4x6 PDF
-            logger("[IPP] Converting Text/PostScript stream to 4x6 PDF for Job #$jobId...")
+            logger("[IPP] Converting Text/PostScript stream to 4x6 PDF for Job #$jobId [$osFamily]...")
             createPdfFromText(textContent, tempPdfFile)
-            ingestPdfToLocalPrint(tempPdfFile, jobId)
+            ingestPdfToLocalPrint(tempPdfFile, jobId, osFamily)
 
         } catch (e: Exception) {
             logger("[IPP] ERROR processing IPP job #$jobId: ${e.message}")
@@ -743,19 +758,22 @@ class IppServer(
         pdfDoc.close()
     }
 
-    private fun ingestPdfToLocalPrint(pdfFile: File, jobId: Int) {
+    private fun ingestPdfToLocalPrint(pdfFile: File, jobId: Int, osFamily: String) {
         val uri = Uri.fromFile(pdfFile)
         val bitmap = printManager.renderPdfToBitmap(uri)
         if (bitmap != null) {
+            // Save diagnostic JPEG screenshot into print history cache
+            PrintHistoryCacheManager.saveJobScreenshot(context, bitmap, jobId, "network", osFamily)
+
             val prefs = context.getSharedPreferences("rollo_prefs", Context.MODE_PRIVATE)
             val showNetworkPreview = prefs.getBoolean("PREF_NETWORK_PREVIEW", false)
 
             if (showNetworkPreview && onNetworkBitmapRendered != null) {
-                logger("[IPP] Displaying Print Preview Dialog for Network Job #$jobId...")
+                logger("[IPP] Displaying Print Preview Dialog for Network Job #$jobId [$osFamily]...")
                 onNetworkBitmapRendered.invoke(bitmap)
             } else {
-                logger("[IPP] PDF converted to 816x1218 bitmap. Adding Network Job #$jobId to Print Queue...")
-                jobQueueManager.addJob(bitmap, "Network Job #$jobId")
+                logger("[IPP] PDF converted to 816x1218 bitmap. Adding Network Job #$jobId [$osFamily] to Print Queue...")
+                jobQueueManager.addJob(bitmap, "Network Job #$jobId ($osFamily)")
             }
         } else {
             logger("[IPP] ERROR: Failed to render bitmap for Network Job #$jobId")

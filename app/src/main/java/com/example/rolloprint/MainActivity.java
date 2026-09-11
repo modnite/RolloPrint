@@ -339,7 +339,7 @@ public class MainActivity extends AppCompatActivity {
 
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
 
-        String appVersion = "3.0.8";
+        String appVersion = "3.1.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -615,6 +615,9 @@ public class MainActivity extends AppCompatActivity {
         Bitmap bitmap = printManager.renderPdfToBitmap(uri);
         if (bitmap != null) {
             lastRenderedBitmap = bitmap;
+            int localJobId = (int) (System.currentTimeMillis() % 10000);
+            PrintHistoryCacheManager.saveJobScreenshot(this, bitmap, localJobId, "local", "android");
+
             boolean showPreview = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
             if (showPreview) {
                 showPrintPreview(bitmap);

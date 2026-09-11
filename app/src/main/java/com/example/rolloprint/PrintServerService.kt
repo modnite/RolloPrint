@@ -136,7 +136,7 @@ class PrintServerService : Service() {
                 setAttribute("ty", "Rollo Thermal Printer 4x6")
                 setAttribute("product", "(Rollo Thermal Printer 4x6)")
                 setAttribute("rp", "ipp/print")
-                setAttribute("pdl", "application/pdf,image/pwg-raster")
+                setAttribute("pdl", "application/pdf,image/pwg-raster,image/jpeg,image/png,application/postscript")
                 setAttribute("kind", "document,label")
                 setAttribute("URF", "CP1,SM1,RS203")
                 setAttribute("papercustom", "4x6in")
@@ -145,6 +145,10 @@ class PrintServerService : Service() {
                 setAttribute("printer-type", "0x4000000")
                 setAttribute("note", "Rollo Thermal 4x6")
                 setAttribute("UUID", "e5b02130-1c4b-483b-9a99-000000000001")
+                setAttribute("Color", "F")
+                setAttribute("Duplex", "F")
+                setAttribute("Copies", "T")
+                setAttribute("air", "none")
             }
 
             registrationListener = object : NsdManager.RegistrationListener {
