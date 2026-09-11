@@ -243,6 +243,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             }
 
             if (!usbManager.hasPermission(device)) {
+                requestPermission(device)
                 val newState = setOf(HardwareState.UNKNOWN)
                 updateHardwareState(newState)
                 return newState
@@ -342,7 +343,8 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
     fun runPrinterDiagnosticsAsync() {
         executor.execute {
-            pollHardwareStatus()
+            val states = pollHardwareStatus()
+            logger("[DIAGNOSTIC] Current Rollo Hardware States: ${states.joinToString(", ")}")
         }
     }
 

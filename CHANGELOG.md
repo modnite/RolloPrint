@@ -9,6 +9,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 - **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
 - **Universal Android Default Print Service Auto-Discovery**: Configured full mDNS TXT descriptors (`kind`, `URF`, `papercustom`, `pdl`) in `PrintServerService.kt`. Android Default Print Service, Mopria, iOS AirPrint, and Linux CUPS auto-discover `Rollo Printer` as a native networked label printer.
 
+### `v3.0.3` — September 6, 2026 at 4:30 AM
+- **Automatic USB Permission Request during Polling**: Updated `pollHardwareStatus()` in `UsbPrintManager.kt` to trigger USB permission prompts automatically on launch/docking if the Rollo printer device is present.
+- **Landscape & DeX Scroll Insets Padding Fix**: Applied `clipToPadding="true"` to `mainScrollView` in `activity_main.xml` and `MainActivity.java`. Prevents UI elements from scrolling behind the status bar or taskbar in landscape and Samsung DeX modes.
+
 ### `v3.0.2` — September 6, 2026 at 4:00 AM
 - **Initial Hardware State Badge Synchronization**: Updated `UsbPrintManager.kt` and `MainActivity.java` so that on app launch, `tvHardwareStatus` initializes to `● Hardware: Disconnected / Unknown` and immediately triggers status polling to evaluate connection state without defaulting to `READY` when un-docked.
 - **In-App Auto-Updater Toast & Dialog Handlers**: Connected `SettingsActivity` update button directly to UI thread Toast messages and `showUpdateAvailableDialog`, downloading update APKs cleanly via `FileProvider`.
