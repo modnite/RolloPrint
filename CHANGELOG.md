@@ -9,9 +9,15 @@ All notable milestone releases for the **RolloPrint** application are documented
 - **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
 - **Universal Android Default Print Service Auto-Discovery**: Configured full mDNS TXT descriptors (`kind`, `URF`, `papercustom`, `pdl`) in `PrintServerService.kt`. Android Default Print Service, Mopria, iOS AirPrint, and Linux CUPS auto-discover `Rollo Printer` as a native networked label printer.
 
+### `v3.0.7` — September 6, 2026 at 6:30 AM
+- **Print Server UI Status & Notification Callback Binding**: Fixed `initializeServer()` in `PrintServerService.kt` to update `statusCallback` and `loggerCallback` references dynamically on service binding. Resolves the issue where `tvServerStatus` remained displaying `"Status: Disabled"` while the service notification was active.
+
 ### `v3.0.6` — September 6, 2026 at 6:00 AM
 - **Console Log Stream Binding in Settings Hardware Check**: Updated `btnDiagnostics` in `SettingsActivity.java` to finish and return directly to `MainActivity` on click. Triggers `runPrinterDiagnosticsAsync()` instantly and streams all USB bus scan details (`[USB_DIAG]`) into the main Activity Console (`tvLog`).
 - **Quiet 5-Second Background Status Poller**: Re-introduced a non-blocking 5-second background poller in `MainActivity.java` (`pollHandler`). Keeps `tvHardwareStatus` on `cardHeader` updated continuously without polluting the Activity Console with repetitive log entries.
+
+### `v3.0.7` — September 6, 2026 at 6:30 AM
+- **Print Server UI Status & Notification Callback Binding**: Fixed `initializeServer()` in `PrintServerService.kt` to update `statusCallback` and `loggerCallback` references dynamically on service binding. Resolves the issue where `tvServerStatus` remained displaying `"Status: Disabled"` while the service notification was active.
 
 ### `v3.0.6` — September 6, 2026 at 6:00 AM
 - **Activity Console Log Binding in Settings Hardware Check**: Updated `btnDiagnostics` in `SettingsActivity.java` to finish and return to `MainActivity` on click, triggering `runPrinterDiagnosticsAsync()` instantly and streaming all USB bus scan details (`[USB_DIAG]`) into the main Activity Console (`tvLog`).

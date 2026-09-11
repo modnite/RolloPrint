@@ -32,6 +32,9 @@ class PrintServerService : Service() {
     private var nsdManager: NsdManager? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
 
+    private var statusCallback: ((Boolean, String?) -> Unit)? = null
+    private var loggerCallback: ((String) -> Unit)? = null
+
     companion object {
         const val CHANNEL_ID = "rollo_print_server_channel"
         const val NOTIFICATION_ID = 1001
@@ -88,27 +91,37 @@ class PrintServerService : Service() {
         onStatusChanged: (Boolean, String?) -> Unit,
         onNetworkBitmapRendered: ((Bitmap) -> Unit)? = null
     ) {
+        this.statusCallback = onStatusChanged
+        this.loggerCallback = logger
+
         if (ippServer == null) {
             ippServer = IppServer(this, usbPrintManager, jobQueueManager, { logMsg ->
-                logger(logMsg)
+                loggerCallback?.invoke(logMsg)
             }, { running, ip ->
                 isServerRunning = running
                 updateNotification(if (running) "Active on $ip:$PORT" else "Server Stopped")
-                onStatusChanged(running, ip)
+                statusCallback?.invoke(running, ip)
             }, onNetworkBitmapRendered)
         }
         ippServer?.start()
+
+        val activeIp = ippServer?.getLocalIpAddress() ?: "127.0.0.1"
+        isServerRunning = true
+        updateNotification("Active on $activeIp:$PORT")
+        statusCallback?.invoke(true, activeIp)
 
         val prefs = getSharedPreferences("rollo_prefs", MODE_PRIVATE)
         val enableRawPort9100 = prefs.getBoolean("PREF_RAW_PORT_9100", true)
         if (enableRawPort9100) {
             if (rawSocketServer == null) {
-                rawSocketServer = RawSocketServer(this, usbPrintManager, jobQueueManager, logger)
+                rawSocketServer = RawSocketServer(this, usbPrintManager, jobQueueManager) { logMsg ->
+                    loggerCallback?.invoke(logMsg)
+                }
             }
             rawSocketServer?.start()
         }
 
-        registerNsdService(logger)
+        registerNsdService { logMsg -> loggerCallback?.invoke(logMsg) }
     }
 
     private fun registerNsdService(logger: (String) -> Unit) {
