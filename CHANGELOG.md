@@ -9,6 +9,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 - **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
 - **Universal Android Default Print Service Auto-Discovery**: Configured full mDNS TXT descriptors (`kind`, `URF`, `papercustom`, `pdl`) in `PrintServerService.kt`. Android Default Print Service, Mopria, iOS AirPrint, and Linux CUPS auto-discover `Rollo Printer` as a native networked label printer.
 
+### `v3.0.4` — September 6, 2026 at 5:00 AM
+- **Universal USB Dock Device Detection & Auto-Permission Prompting**: Updated `findRolloDevice()` in `UsbPrintManager.kt` to match VID 2501 ($0x09C5$), PID 1416 ($0x0588$), or any attached USB Printer Class ($7$) device. Automatically triggers USB permission prompts on status poll when docked.
+- **Activity Log Card Button Padding & Label Simplification**: Simplified "Dump to pastebin" to "Dump log" (`btnDumpLogs`), "Select PDF & print" to "Select PDF" (`btnSelect`), and added compact horizontal button padding to eliminate "Activity log" header title wrapping.
+
 ### `v3.0.3` — September 6, 2026 at 4:30 AM
 - **Automatic USB Permission Request during Polling**: Updated `pollHardwareStatus()` in `UsbPrintManager.kt` to trigger USB permission prompts automatically on launch/docking if the Rollo printer device is present.
 - **Landscape & DeX Scroll Insets Padding Fix**: Applied `clipToPadding="true"` to `mainScrollView` in `activity_main.xml` and `MainActivity.java`. Prevents UI elements from scrolling behind the status bar or taskbar in landscape and Samsung DeX modes.

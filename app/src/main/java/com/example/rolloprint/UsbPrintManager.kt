@@ -177,7 +177,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                 val device = findRolloDevice()
 
                 if (device == null) {
-                    logger("CRITICAL: Rollo X1038 not found.")
+                    logger("CRITICAL: Rollo X1038 printer device not found.")
                     onComplete?.invoke(false)
                     return@execute
                 }
@@ -243,6 +243,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
             }
 
             if (!usbManager.hasPermission(device)) {
+                logger("[USB] Detected Rollo printer: ${device.deviceName} (VID=${device.vendorId}, PID=${device.productId}). Requesting USB permission...")
                 requestPermission(device)
                 val newState = setOf(HardwareState.UNKNOWN)
                 updateHardwareState(newState)
@@ -349,11 +350,27 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
     }
 
     private fun findRolloDevice(): UsbDevice? {
-        return usbManager.deviceList.values.find { it.vendorId == ROLLO_VID && it.productId == ROLLO_PID }
+        val devices = usbManager.deviceList.values
+        // 1. Direct VID/PID match (2501 / 1416)
+        val matchVidPid = devices.find { it.vendorId == ROLLO_VID && it.productId == ROLLO_PID }
+        if (matchVidPid != null) return matchVidPid
+
+        // 2. Vendor ID match (2501 / 0x09C5)
+        val matchVid = devices.find { it.vendorId == ROLLO_VID }
+        if (matchVid != null) return matchVid
+
+        // 3. Fallback: Any connected USB device with USB Printer Class (7)
+        return devices.find { device ->
+            if (device.deviceClass == UsbConstants.USB_CLASS_PRINTER) return@find true
+            for (i in 0 until device.interfaceCount) {
+                if (device.getInterface(i).interfaceClass == UsbConstants.USB_CLASS_PRINTER) return@find true
+            }
+            false
+        }
     }
 
     private fun requestPermission(device: UsbDevice) {
-        logger("Requesting USB Permission...")
+        logger("Requesting USB Permission for ${device.deviceName} (VID=${device.vendorId}, PID=${device.productId})...")
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
         val intent = Intent(ACTION_USB_PERMISSION).setPackage(context.packageName)
         val permissionIntent = PendingIntent.getBroadcast(context, 0, intent, flags)

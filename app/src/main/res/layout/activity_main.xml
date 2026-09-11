@@ -245,6 +245,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="8dp"
+                        android:paddingHorizontal="10dp"
+                        android:textSize="12sp"
                         android:text="@string/dump_to_pastebin" />
 
                     <ImageView

@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">RolloPrint</string>
-    <string name="select_pdf_print">Select PDF &amp; print</string>
+    <string name="select_pdf_print">Select PDF</string>
     <string name="logs_header">Activity log</string>
     <string name="print_server">Print server</string>
     <string name="server_status_disabled">Status: Disabled (Port 8631)</string>
@@ -25,7 +25,7 @@
     <string name="clear_queue">Clear queue</string>
     <string name="view_queue">View queue</string>
     <string name="expand_activity_log">Expand activity log</string>
-    <string name="dump_to_pastebin">Dump to pastebin</string>
+    <string name="dump_to_pastebin">Dump log</string>
     <string name="etherpad_url_hint">Etherpad / Pastebin URL</string>
     <string name="check_updates">Check for updates</string>
     <string name="clear_all">Clear all</string>
@@ -35,7 +35,7 @@
     <string name="delete">Delete</string>
     <string name="update_now">Update now</string>
     <string name="ignore">Ignore</string>
-    <string name="run_hardware_check">Run hardware status check</string>
+    <string name="run_hardware_check">Run hardware check</string>
     <string name="no_pending_jobs">No pending jobs in print queue</string>
     <string name="preview_options_header">Print preview options</string>
     <string name="etherpad_header">Pastebin / Etherpad settings</string>
