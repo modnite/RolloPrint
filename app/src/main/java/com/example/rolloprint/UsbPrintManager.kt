@@ -108,7 +108,8 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         val widthBytes = 104 // #define ROLLO_BYTE_WIDTH 104
         val totalBytes = widthBytes * height
 
-        val monoData = ByteArray(totalBytes)
+        // TSPL BITMAP Bit Polarity: 0xFF = All White (0 dots firing), 0x00 = All Black (thermal elements ON)
+        val monoData = ByteArray(totalBytes) { 0xFF.toByte() }
         val pixels = IntArray(width * height)
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
@@ -124,10 +125,10 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
                 val b = pixel and 0xFF
                 val luminance = (0.299 * r + 0.587 * g + 0.114 * b)
 
-                if (luminance < 128) { // Black pixel
+                if (luminance < 128) { // Black pixel -> Clear bit to 0 (TSPL black)
                     val byteIdx = y * widthBytes + (x / 8)
                     val bitShift = 7 - (x % 8)
-                    monoData[byteIdx] = (monoData[byteIdx].toInt() or (1 shl bitShift)).toByte()
+                    monoData[byteIdx] = (monoData[byteIdx].toInt() and (1 shl bitShift).inv()).toByte()
                     lineDarkCount++
                 }
             }
@@ -174,6 +175,10 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
         executor.execute {
             try {
                 val tsplData = generateTsplPayload(bitmap)
+                if (!bitmap.isRecycled) {
+                    try { bitmap.recycle() } catch (_: Exception) {}
+                }
+
                 val device = findRolloDevice()
 
                 if (device == null) {

@@ -4,6 +4,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v3.0.8` — September 6, 2026 at 7:00 AM
+- **TSPL BITMAP Bit Polarity Correction**: Fixed bit packing in `UsbPrintManager.kt`. Initialized monochrome buffer to `0xFF` (all white) and cleared black bits to `0`, restoring crisp black text/barcodes on white paper and eliminating printer power supply trips / reboots.
+- **Bitmap Heap Memory Recycling**: Added `bitmap.recycle()` calls in `printBitmapAsync` to free uncompressed $4\text{ MB}$ bitmap arrays immediately after TSPL encoding, eliminating app process crashes.
+
 ### `v2.3.0` — September 6, 2026 at 2:00 AM
 - **Dummy Sink Architecture (Mask Hardware State from Clients)**: Configured `IppServer.kt` to always report `printerState = PrinterState.idle` and `printerStateReasons = ["none"]` to network clients. Clients receive immediate job acceptance (`JobState.completed`) and hand off payloads cleanly without client-side filter halts or "Out of Paper" popups.
 - **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
