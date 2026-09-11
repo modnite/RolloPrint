@@ -46,4 +46,8 @@
     <string name="theme_light">Light theme</string>
     <string name="sort_oldest_first">Oldest first</string>
     <string name="sort_newest_first">Newest first</string>
+    <string name="print_cache_title">Print history cache</string>
+    <string name="no_cached_screenshots">No cached print screenshots found</string>
+    <string name="export_jpeg">Export JPEG</string>
+    <string name="export_cache_zip">Export all (.zip)</string>
 </resources>

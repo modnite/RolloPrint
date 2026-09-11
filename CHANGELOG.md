@@ -8,6 +8,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 - **PostScript Filter Bypass & Direct PDF Streaming**: Removed `application/postscript` from IPP `documentFormatSupported` in `IppServer.kt` and mDNS `pdl` TXT record in `PrintServerService.kt`. Forces macOS, Linux, and Windows clients to bypass PostScript CUPS filters (`cgpdftops`) and stream raw PDF documents (`srcdoc.pdf`) directly over IPP without filter text boxes.
 - **Enhanced PostScript Text & Metadata Extraction**: Updated `createPdfFromText` in `IppServer.kt` to extract all PostScript document string calls (`(...) show`, `(...) Tj`, `(...) TJ`) and render actual document content onto 4x6 label canvases whenever PostScript streams are submitted.
 
+### `v3.1.2` — September 6, 2026 at 8:30 AM
+- **PostScript Filter Bypass & Direct PDF Streaming**: Removed `application/postscript` from IPP `documentFormatSupported` in `IppServer.kt` and mDNS `pdl` TXT record in `PrintServerService.kt`. Forces macOS, Linux, and Windows clients to bypass PostScript CUPS filters (`cgpdftops`) and stream raw PDF documents (`srcdoc.pdf`) directly over IPP without filter text boxes.
+- **Enhanced PostScript Text & Metadata Extraction**: Updated `createPdfFromText` in `IppServer.kt` to extract all PostScript document string calls (`(...) show`, `(...) Tj`, `(...) TJ`) and render actual document content onto 4x6 label canvases whenever PostScript streams are submitted.
+
 ### `v3.1.1` — September 6, 2026 at 8:00 AM
 - **Safari / Mac PostScript Header Extraction**: Fixed `detectOsFamily` and `createPdfFromText` in `IppServer.kt`. Inspects `cgpdftops` / PostScript wrappers, extracts document Title and Creator metadata, and renders clean, formatted 4x6 document labels instead of printing raw PostScript code.
 - **Accurate `macos` OS Classification**: Corrected OS family detection when Mac CUPS sends `User-Agent: CUPS/2.4.x` so Mac jobs are properly categorized and logged as `macos`.

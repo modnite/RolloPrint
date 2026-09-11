@@ -169,15 +169,7 @@ public class MainActivity extends AppCompatActivity {
             Insets insets = windowInsets.getInsets(
                     WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
             );
-            float density = getResources().getDisplayMetrics().density;
-            int basePaddingPx = (int) (16 * density);
-
-            v.setPadding(
-                    insets.left + basePaddingPx,
-                    insets.top + basePaddingPx,
-                    insets.right + basePaddingPx,
-                    insets.bottom + basePaddingPx
-            );
+            v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
             return WindowInsetsCompat.CONSUMED;
         });
 
@@ -339,7 +331,7 @@ public class MainActivity extends AppCompatActivity {
 
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
 
-        String appVersion = "3.1.2";
+        String appVersion = "3.2.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}

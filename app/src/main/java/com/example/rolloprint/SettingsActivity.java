@@ -140,24 +140,11 @@ public class SettingsActivity extends AppCompatActivity {
 
         if (btnExportCache != null) {
             int cacheCount = PrintHistoryCacheManager.getCachedFileCount(this);
-            btnExportCache.setText("Export Print Cache (" + cacheCount + " screenshots)");
+            btnExportCache.setText("Print History Cache (" + cacheCount + " screenshots)");
 
             btnExportCache.setOnClickListener(v -> {
-                File zipFile = PrintHistoryCacheManager.exportCacheZip(this);
-                if (zipFile != null && zipFile.exists()) {
-                    Uri contentUri = FileProvider.getUriForFile(
-                            this,
-                            getPackageName() + ".fileprovider",
-                            zipFile
-                    );
-                    Intent shareIntent = new Intent(Intent.ACTION_SEND);
-                    shareIntent.setType("application/zip");
-                    shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
-                    shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    startActivity(Intent.createChooser(shareIntent, "Share Print Cache ZIP"));
-                } else {
-                    Toast.makeText(this, "No cached print screenshots found.", Toast.LENGTH_SHORT).show();
-                }
+                PrintCacheGalleryDialogFragment galleryDialog = PrintCacheGalleryDialogFragment.Companion.newInstance();
+                galleryDialog.show(getSupportFragmentManager(), "PrintCacheGallery");
             });
         }
 
