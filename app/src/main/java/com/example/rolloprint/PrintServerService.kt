@@ -136,7 +136,7 @@ class PrintServerService : Service() {
                 setAttribute("ty", "Rollo Thermal Printer 4x6")
                 setAttribute("product", "(Rollo Thermal Printer 4x6)")
                 setAttribute("rp", "ipp/print")
-                setAttribute("pdl", "application/pdf,image/pwg-raster,image/jpeg,image/png,application/postscript")
+                setAttribute("pdl", "application/pdf,image/pwg-raster,image/jpeg,image/png")
                 setAttribute("kind", "document,label")
                 setAttribute("URF", "CP1,SM1,RS203")
                 setAttribute("papercustom", "4x6in")

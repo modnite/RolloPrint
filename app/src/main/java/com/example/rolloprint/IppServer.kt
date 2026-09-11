@@ -405,9 +405,8 @@ class IppServer(
                 ),
                 Types.compressionSupported.of("none"),
                 Types.documentFormatSupported.of(
-                    "image/pwg-raster",
                     "application/pdf",
-                    "application/postscript",
+                    "image/pwg-raster",
                     "image/png",
                     "image/jpeg",
                     "application/octet-stream"
@@ -746,15 +745,29 @@ class IppServer(
         }
 
         if (textContent.contains("cgpdftops") || textContent.contains("userdict/dscInfo") || textContent.contains("%!PS-Adobe")) {
-            // Render formatted PostScript / Safari Document Label
-            var title = "Network Print Document"
+            // Render formatted PostScript / Safari Document Label with extracted text content!
+            var title = "Network Document"
             var creator = "CUPS PostScript Filter"
 
             val titleMatch = Regex("""/Title\s*\((.*?)\)""").find(textContent)
-            if (titleMatch != null) title = titleMatch.groupValues[1]
+            if (titleMatch != null && titleMatch.groupValues[1].isNotBlank()) {
+                title = titleMatch.groupValues[1]
+            }
 
             val creatorMatch = Regex("""/Creator\s*\((.*?)\)""").find(textContent)
-            if (creatorMatch != null) creator = creatorMatch.groupValues[1]
+            if (creatorMatch != null && creatorMatch.groupValues[1].isNotBlank()) {
+                creator = creatorMatch.groupValues[1]
+            }
+
+            // Extract PostScript text strings enclosed in (...)
+            val extractedStrings = mutableListOf<String>()
+            val psStringRegex = Regex("""\(([^()]{2,80})\)\s*(?:show|Tj|TJ|T|k|K)?""")
+            psStringRegex.findAll(textContent).forEach { match ->
+                val str = match.groupValues[1].trim()
+                if (str.isNotBlank() && !str.startsWith("%") && !str.startsWith("/") && !str.contains("Font") && !str.contains("Encoding") && !str.contains("Adobe")) {
+                    extractedStrings.add(str)
+                }
+            }
 
             // Outer Border
             paint.style = Paint.Style.STROKE
@@ -763,31 +776,40 @@ class IppServer(
 
             // Header Title
             paint.style = Paint.Style.FILL
-            paint.textSize = 40f
+            paint.textSize = 38f
             paint.isFakeBoldText = true
-            canvas.drawText(title.take(30), 50f, 90f, paint)
+            canvas.drawText(title.take(32), 40f, 80f, paint)
 
             paint.strokeWidth = 3f
-            canvas.drawLine(50f, 110f, UsbPrintManager.TARGET_WIDTH - 50f, 110f, paint)
+            canvas.drawLine(40f, 100f, UsbPrintManager.TARGET_WIDTH - 40f, 100f, paint)
 
-            paint.textSize = 26f
+            paint.textSize = 24f
             paint.isFakeBoldText = false
-            var y = 160f
-            canvas.drawText("Source: $creator", 50f, y, paint)
-            y += 40f
-            canvas.drawText("Format: PostScript / PDF Auto-Converted", 50f, y, paint)
-            y += 40f
-            canvas.drawText("Date: " + SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date()), 50f, y, paint)
-            y += 50f
+            var y = 140f
+            canvas.drawText("Source: $creator", 40f, y, paint)
+            y += 36f
 
-            paint.strokeWidth = 2f
-            paint.style = Paint.Style.STROKE
-            canvas.drawRect(50f, y, UsbPrintManager.TARGET_WIDTH - 50f, y + 160f, paint)
+            if (extractedStrings.isNotEmpty()) {
+                canvas.drawText("--- Document Content ---", 40f, y, paint)
+                y += 40f
+                paint.textSize = 24f
 
-            paint.style = Paint.Style.FILL
-            paint.textSize = 30f
-            paint.isFakeBoldText = true
-            canvas.drawText("DOCUMENT CONVERTED SUCCESSFULLY", 70f, y + 90f, paint)
+                val uniqueStrings = extractedStrings.distinct().take(22)
+                for (str in uniqueStrings) {
+                    canvas.drawText(str.take(52), 40f, y, paint)
+                    y += 36f
+                    if (y > UsbPrintManager.TARGET_HEIGHT - 50) break
+                }
+            } else {
+                paint.strokeWidth = 2f
+                paint.style = Paint.Style.STROKE
+                canvas.drawRect(40f, y, UsbPrintManager.TARGET_WIDTH - 40f, y + 140f, paint)
+
+                paint.style = Paint.Style.FILL
+                paint.textSize = 28f
+                paint.isFakeBoldText = true
+                canvas.drawText("DOCUMENT PROCESSED SUCCESSFULLY", 60f, y + 80f, paint)
+            }
 
         } else {
             // Plain text rendering
