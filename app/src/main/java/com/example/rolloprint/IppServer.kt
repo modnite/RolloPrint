@@ -70,9 +70,12 @@ class IppServer(
     }
 
     fun start() {
-        if (isRunning) return
-        isRunning = true
         val ipAddress = getLocalIpAddress()
+        if (isRunning) {
+            onStatusChanged(true, ipAddress)
+            return
+        }
+        isRunning = true
         logger("[IPP] Server starting on $ipAddress:$PORT...")
         onStatusChanged(true, ipAddress)
 
@@ -773,7 +776,7 @@ class IppServer(
         return -1
     }
 
-    private fun getLocalIpAddress(): String {
+    fun getLocalIpAddress(): String {
         try {
             val interfaces = NetworkInterface.getNetworkInterfaces()
             while (interfaces.hasMoreElements()) {

@@ -339,7 +339,7 @@ public class MainActivity extends AppCompatActivity {
 
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
 
-        String appVersion = "3.0.6";
+        String appVersion = "3.0.7";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
