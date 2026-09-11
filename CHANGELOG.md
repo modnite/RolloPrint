@@ -9,6 +9,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 - **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
 - **Universal Android Default Print Service Auto-Discovery**: Configured full mDNS TXT descriptors (`kind`, `URF`, `papercustom`, `pdl`) in `PrintServerService.kt`. Android Default Print Service, Mopria, iOS AirPrint, and Linux CUPS auto-discover `Rollo Printer` as a native networked label printer.
 
+### `v3.0.6` — September 6, 2026 at 6:00 AM
+- **Console Log Stream Binding in Settings Hardware Check**: Updated `btnDiagnostics` in `SettingsActivity.java` to finish and return directly to `MainActivity` on click. Triggers `runPrinterDiagnosticsAsync()` instantly and streams all USB bus scan details (`[USB_DIAG]`) into the main Activity Console (`tvLog`).
+- **Quiet 5-Second Background Status Poller**: Re-introduced a non-blocking 5-second background poller in `MainActivity.java` (`pollHandler`). Keeps `tvHardwareStatus` on `cardHeader` updated continuously without polluting the Activity Console with repetitive log entries.
+
 ### `v3.0.5` — September 6, 2026 at 5:30 AM
 - **Broad USB Bus Scan & Universal Dock Detection**: Enhanced `findRolloDevice()` in `UsbPrintManager.kt` to scan VID 2501 ($0x09C5$), PID 1416 ($0x0588$), or any attached USB Printer Class ($7$) device. Verbose diagnostic logging (`[USB_DIAG]`) lists every connected USB device on the bus.
 - **System-Wide USB Attach/Detach Broadcast Handlers**: Registered `usbReceiver` in `MainActivity.java` with `ACTION_USB_DEVICE_ATTACHED` and `ACTION_USB_DEVICE_DETACHED` under `RECEIVER_EXPORTED` flags. Automatically detects dock insertions and triggers USB permission prompts instantly.

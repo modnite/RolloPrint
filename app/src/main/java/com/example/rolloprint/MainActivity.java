@@ -70,6 +70,17 @@ public class MainActivity extends AppCompatActivity {
     private boolean isServiceBound = false;
     private boolean isUpdatingSwitchProgrammatically = false;
 
+    private final Handler pollHandler = new Handler(Looper.getMainLooper());
+    private final Runnable pollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (printManager != null) {
+                printManager.pollHardwareStatus(); // Quiet poll updates tvHardwareStatus badge
+            }
+            pollHandler.postDelayed(this, 5000); // Check every 5s quietly
+        }
+    };
+
     private final ActivityResultLauncher<Intent> pdfPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -108,13 +119,23 @@ public class MainActivity extends AppCompatActivity {
             if (UsbPrintManager.ACTION_USB_PERMISSION.equals(action)) {
                 synchronized (this) {
                     if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                        log("Permission GRANTED for Rollo. Re-triggering print...");
-                        if (lastRenderedBitmap != null) {
-                            jobQueueManager.addJob(lastRenderedBitmap, "Permission Retry Job");
+                        log("[USB] Permission GRANTED for Rollo. Running hardware check...");
+                        if (printManager != null) {
+                            printManager.runPrinterDiagnosticsAsync();
                         }
                     } else {
-                        log("Permission DENIED for Rollo.");
+                        log("[USB] Permission DENIED for Rollo.");
                     }
+                }
+            } else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
+                log("[USB] USB Device Attached to Dock/Phone!");
+                if (printManager != null) {
+                    printManager.runPrinterDiagnosticsAsync();
+                }
+            } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
+                log("[USB] USB Device Detached from Dock/Phone!");
+                if (printManager != null) {
+                    printManager.runPrinterDiagnosticsAsync();
                 }
             }
         }
@@ -170,6 +191,12 @@ public class MainActivity extends AppCompatActivity {
         Button btnDumpLogs = findViewById(R.id.btnDumpLogs);
         tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
 
+        TextView tvHardwareStatus = findViewById(R.id.tvHardwareStatus);
+        if (tvHardwareStatus != null) {
+            tvHardwareStatus.setText("● Hardware: Disconnected / Unknown");
+            tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+        }
+
         if (savedInstanceState != null) {
             String savedLog = savedInstanceState.getString("SAVED_LOG_TEXT", "");
             if (!savedLog.isEmpty()) {
@@ -189,15 +216,9 @@ public class MainActivity extends AppCompatActivity {
 
         if (btnDumpLogs != null) {
             btnDumpLogs.setOnClickListener(v -> {
-                log("[UI_EVENT] Clicked 'Dump to pastebin' button.");
+                log("[UI_EVENT] Clicked 'Dump log' button.");
                 dumpActivityLogsToEtherpad();
             });
-        }
-
-        TextView tvHardwareStatus = findViewById(R.id.tvHardwareStatus);
-        if (tvHardwareStatus != null) {
-            tvHardwareStatus.setText("● Hardware: Disconnected / Unknown");
-            tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
         }
 
         printManager = new UsbPrintManager(this, text -> {
@@ -276,7 +297,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnSelect.setOnClickListener(v -> {
-            log("[UI_EVENT] Clicked 'Select PDF & print' button.");
+            log("[UI_EVENT] Clicked 'Select PDF' button.");
             log("[LOCAL] --- Direct TSPL Label Print ---");
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/pdf");
@@ -311,10 +332,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
-        ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(UsbPrintManager.ACTION_USB_PERMISSION);
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
 
-        String appVersion = "3.0.5";
+        ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
+
+        String appVersion = "3.0.6";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -325,6 +350,9 @@ public class MainActivity extends AppCompatActivity {
             log("RolloPrint v" + appVersion + " Loaded.");
             log("Ready to print 4x6 PDF labels.");
         }
+
+        // Start quiet 5s hardware status polling loop
+        pollHandler.postDelayed(pollRunnable, 1000);
 
         appUpdateManager = new AppUpdateManager(
                 this,
@@ -345,6 +373,14 @@ public class MainActivity extends AppCompatActivity {
 
         // Check if app was launched via Share / Open PDF intent
         handleIncomingIntent(getIntent());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (printManager != null) {
+            printManager.runPrinterDiagnosticsAsync();
+        }
     }
 
     @Override
@@ -603,6 +639,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        pollHandler.removeCallbacks(pollRunnable);
         if (isServiceBound) {
             unbindService(serviceConnection);
             isServiceBound = false;
