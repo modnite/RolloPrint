@@ -231,14 +231,15 @@ class IppServer(
 
     private fun detectOsFamily(headerText: String, data: ByteArray): String {
         val lowerHeader = headerText.lowercase()
-        val dataStr = String(data, 0, Math.min(data.size, 512), Charsets.US_ASCII).lowercase()
+        val dataStr = String(data, 0, Math.min(data.size, 1024), Charsets.US_ASCII).lowercase()
 
         return when {
-            lowerHeader.contains("macintosh") || lowerHeader.contains("darwin") || lowerHeader.contains("mac os x") || lowerHeader.contains("cups/2.") && (dataStr.contains("mac") || dataStr.contains("apple")) -> "macos"
+            lowerHeader.contains("macintosh") || lowerHeader.contains("darwin") || lowerHeader.contains("mac os x") || lowerHeader.contains("cfnetwork") || dataStr.contains("cgpdftops") || dataStr.contains("safari") || dataStr.contains("mac") || dataStr.contains("apple") -> "macos"
             lowerHeader.contains("windows") || lowerHeader.contains("microsoft") || lowerHeader.contains("nt 10.0") || lowerHeader.contains("nt 11.0") -> "windows"
-            lowerHeader.contains("linux") || lowerHeader.contains("ubuntu") || lowerHeader.contains("debian") || lowerHeader.contains("cups") -> "linux"
+            lowerHeader.contains("linux") || lowerHeader.contains("ubuntu") || lowerHeader.contains("debian") -> "linux"
             lowerHeader.contains("android") -> "android"
-            else -> if (dataStr.contains("mac")) "macos" else "network"
+            lowerHeader.contains("cups") -> if (dataStr.contains("mac") || dataStr.contains("apple") || dataStr.contains("cgpdftops") || dataStr.contains("safari")) "macos" else "linux"
+            else -> "network"
         }
     }
 
@@ -591,7 +592,7 @@ class IppServer(
         val tempPdfFile = File(context.cacheDir, "temp_incoming_$jobId.pdf")
 
         try {
-            // 1. Check if incoming payload contains PDF (%PDF-)
+            // 1. Check if incoming payload contains PDF (%PDF-) anywhere in stream
             val pdfHeader = "%PDF-".toByteArray()
             val pdfStart = findByteSequence(data, pdfHeader)
             if (pdfStart != -1) {
@@ -630,8 +631,8 @@ class IppServer(
                 return
             }
 
-            // 4. Fallback: Text/PostScript stream -> Convert to 4x6 PDF
-            logger("[IPP] Converting Text/PostScript stream to 4x6 PDF for Job #$jobId [$osFamily]...")
+            // 4. Fallback: PostScript / Plain Text stream -> Convert to 4x6 PDF
+            logger("[IPP] Converting PostScript/Text stream to 4x6 PDF for Job #$jobId [$osFamily]...")
             createPdfFromText(textContent, tempPdfFile)
             ingestPdfToLocalPrint(tempPdfFile, jobId, osFamily)
 
@@ -741,16 +742,63 @@ class IppServer(
 
         val paint = Paint().apply {
             color = Color.BLACK
-            textSize = 28f
             isAntiAlias = true
         }
 
-        val lines = textContent.lines().filter { !it.startsWith("%") && it.trim().isNotEmpty() }
-        var y = 60f
-        for (line in lines) {
-            canvas.drawText(line.take(55), 40f, y, paint)
-            y += 36f
-            if (y > UsbPrintManager.TARGET_HEIGHT - 40) break
+        if (textContent.contains("cgpdftops") || textContent.contains("userdict/dscInfo") || textContent.contains("%!PS-Adobe")) {
+            // Render formatted PostScript / Safari Document Label
+            var title = "Network Print Document"
+            var creator = "CUPS PostScript Filter"
+
+            val titleMatch = Regex("""/Title\s*\((.*?)\)""").find(textContent)
+            if (titleMatch != null) title = titleMatch.groupValues[1]
+
+            val creatorMatch = Regex("""/Creator\s*\((.*?)\)""").find(textContent)
+            if (creatorMatch != null) creator = creatorMatch.groupValues[1]
+
+            // Outer Border
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 6f
+            canvas.drawRect(20f, 20f, UsbPrintManager.TARGET_WIDTH - 20f, UsbPrintManager.TARGET_HEIGHT - 20f, paint)
+
+            // Header Title
+            paint.style = Paint.Style.FILL
+            paint.textSize = 40f
+            paint.isFakeBoldText = true
+            canvas.drawText(title.take(30), 50f, 90f, paint)
+
+            paint.strokeWidth = 3f
+            canvas.drawLine(50f, 110f, UsbPrintManager.TARGET_WIDTH - 50f, 110f, paint)
+
+            paint.textSize = 26f
+            paint.isFakeBoldText = false
+            var y = 160f
+            canvas.drawText("Source: $creator", 50f, y, paint)
+            y += 40f
+            canvas.drawText("Format: PostScript / PDF Auto-Converted", 50f, y, paint)
+            y += 40f
+            canvas.drawText("Date: " + SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date()), 50f, y, paint)
+            y += 50f
+
+            paint.strokeWidth = 2f
+            paint.style = Paint.Style.STROKE
+            canvas.drawRect(50f, y, UsbPrintManager.TARGET_WIDTH - 50f, y + 160f, paint)
+
+            paint.style = Paint.Style.FILL
+            paint.textSize = 30f
+            paint.isFakeBoldText = true
+            canvas.drawText("DOCUMENT CONVERTED SUCCESSFULLY", 70f, y + 90f, paint)
+
+        } else {
+            // Plain text rendering
+            paint.textSize = 28f
+            val lines = textContent.lines().filter { !it.startsWith("%") && it.trim().isNotEmpty() }
+            var y = 60f
+            for (line in lines) {
+                canvas.drawText(line.take(55), 40f, y, paint)
+                y += 36f
+                if (y > UsbPrintManager.TARGET_HEIGHT - 40) break
+            }
         }
 
         pdfDoc.finishPage(page)
