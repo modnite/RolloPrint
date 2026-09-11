@@ -9,6 +9,9 @@ All notable milestone releases for the **RolloPrint** application are documented
 - **Strict Sequential Job ID Tracking**: Added `activeJobMap` to `IppServer.kt` linking 2-step `Create-Job` and `Send-Document` IPP requests to the same `job-id`. Network jobs now increment sequentially as `Job #1`, `Job #2`, `Job #3`, `Job #4` without skipping numbers.
 - **Universal Android Default Print Service Auto-Discovery**: Configured full mDNS TXT descriptors (`kind`, `URF`, `papercustom`, `pdl`) in `PrintServerService.kt`. Android Default Print Service, Mopria, iOS AirPrint, and Linux CUPS auto-discover `Rollo Printer` as a native networked label printer.
 
+### `v3.0.1` — September 6, 2026 at 3:30 AM
+- **In-App Auto-Update Repair in SettingsActivity**: Updated `SettingsActivity.java` to fetch dynamic package version names, display Toast messages during updates, and fire the Material Update Dialog on UI thread when new releases are detected on GitHub.
+
 ### `v3.0.0` — September 6, 2026 at 3:00 AM
 - **Official Rollo v1.8.4 Print Head Dot Width**: Updated `UsbPrintManager.kt` raster target width to `#define ROLLO_DOT_WIDTH 832` ($104 \text{ bytes} \times 8 = 832 \text{ dots}$ @ 203 DPI) with exact output centering across the print head, matching official Rollo Linux/Mac v1.8.4 (2024) drivers and AirPrint firmware back-ports.
 - **Official Rollo Thermal Power Protection (`rastertorollo.c`)**: Implemented official Rollo thermal head current protection. Bitmaps containing >100 consecutive dense black lines dynamically drop TSPL speed and density (`SPEED 4`, `DENSITY 6`) to protect the Rollo X1038 power supply from current starvation trips.

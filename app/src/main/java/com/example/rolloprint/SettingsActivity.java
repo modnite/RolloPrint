@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -17,6 +18,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -132,14 +134,43 @@ public class SettingsActivity extends AppCompatActivity {
 
         if (btnCheckUpdates != null) {
             btnCheckUpdates.setOnClickListener(v -> {
-                String appVersion = "2.3.0";
+                String currentVer = "3.0.0";
                 try {
-                    appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                    currentVer = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 } catch (Exception e) {}
-                AppUpdateManager updateManager = new AppUpdateManager(this, appVersion, s -> null, (tag, notes, url) -> null);
+
+                AppUpdateManager updateManager = new AppUpdateManager(
+                        this,
+                        currentVer,
+                        msg -> {
+                            runOnUiThread(() -> Toast.makeText(this, msg, Toast.LENGTH_SHORT).show());
+                            return null;
+                        },
+                        (latestTag, releaseNotes, apkUrl) -> {
+                            runOnUiThread(() -> showUpdateAvailableDialog(latestTag, releaseNotes, apkUrl));
+                            return null;
+                        }
+                );
                 updateManager.checkForUpdates(false);
             });
         }
+    }
+
+    private void showUpdateAvailableDialog(String latestTag, String releaseNotes, String apkUrl) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("RolloPrint update available (v" + latestTag + ")")
+                .setMessage(releaseNotes)
+                .setPositiveButton(R.string.update_now, (dialog, which) -> {
+                    String currentVer = "3.0.0";
+                    try { currentVer = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) {}
+                    AppUpdateManager updateManager = new AppUpdateManager(this, currentVer, s -> null, (t, n, u) -> null);
+                    updateManager.downloadAndInstallApk(apkUrl, msg -> {
+                        runOnUiThread(() -> Toast.makeText(this, msg, Toast.LENGTH_SHORT).show());
+                        return null;
+                    });
+                })
+                .setNegativeButton(R.string.ignore, null)
+                .show();
     }
 
     @Override
