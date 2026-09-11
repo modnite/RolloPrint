@@ -4,9 +4,21 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v3.2.0` — September 6, 2026 at 9:00 AM
+- **In-App OpenPrinting CUPS Control Panel**: Replaced web UI requirements with a native Material 3 in-app CUPS control panel inside `QueueManagerDialogFragment` displaying `Rollo Thermal Printer 4x6 (Idle - Accepting Jobs)`, active protocols, client OS badges (`[iOS]`, `[macOS]`, `[Windows]`), and job formats.
+- **In-App Print Cache Screenshot Gallery**: Added `PrintCacheGalleryDialogFragment` allowing users to view rendered $832 \times 1218$ JPEG thumbnails directly in-app, sort by Newest/Oldest, and export individual JPEGs on demand via `FileProvider`.
+- **Universal CUPS Stream Decoder Suite**: Natively parses and decodes Apple URF (`image/urf`), PWG Raster, CUPS Raster (`application/vnd.cups-raster`), Zebra ZPL (`^XA`), HP PCL (`\x1BE`), PostScript, PDF, Images, CUPS Banners, and plain text.
+- **1:1 UI Padding Alignment**: Standardized left/right content padding on `MainActivity` (`activity_main.xml`) to `16dp`, matching `SettingsActivity` 1:1.
+
 ### `v3.1.2` — September 6, 2026 at 8:30 AM
 - **PostScript Filter Bypass & Direct PDF Streaming**: Removed `application/postscript` from IPP `documentFormatSupported` in `IppServer.kt` and mDNS `pdl` TXT record in `PrintServerService.kt`. Forces macOS, Linux, and Windows clients to bypass PostScript CUPS filters (`cgpdftops`) and stream raw PDF documents (`srcdoc.pdf`) directly over IPP without filter text boxes.
 - **Enhanced PostScript Text & Metadata Extraction**: Updated `createPdfFromText` in `IppServer.kt` to extract all PostScript document string calls (`(...) show`, `(...) Tj`, `(...) TJ`) and render actual document content onto 4x6 label canvases whenever PostScript streams are submitted.
+
+### `v3.2.0` — September 6, 2026 at 9:00 AM
+- **In-App OpenPrinting CUPS Control Panel**: Replaced web UI requirements with a native Material 3 in-app CUPS control panel inside `QueueManagerDialogFragment` displaying `Rollo Thermal Printer 4x6 (Idle - Accepting Jobs)`, active protocols, client OS badges (`[iOS]`, `[macOS]`, `[Windows]`), and job formats.
+- **In-App Print Cache Screenshot Gallery**: Added `PrintCacheGalleryDialogFragment` allowing users to view rendered $832 \times 1218$ JPEG thumbnails directly in-app, sort by Newest/Oldest, and export individual JPEGs on demand via `FileProvider`.
+- **Universal CUPS Stream Decoder Suite**: Natively parses and decodes Apple URF (`image/urf`), PWG Raster, CUPS Raster (`application/vnd.cups-raster`), Zebra ZPL (`^XA`), HP PCL (`\x1BE`), PostScript, PDF, Images, CUPS Banners, and plain text.
+- **1:1 UI Padding Alignment**: Standardized left/right content padding on `MainActivity` (`activity_main.xml`) to `16dp`, matching `SettingsActivity` 1:1.
 
 ### `v3.1.2` — September 6, 2026 at 8:30 AM
 - **PostScript Filter Bypass & Direct PDF Streaming**: Removed `application/postscript` from IPP `documentFormatSupported` in `IppServer.kt` and mDNS `pdl` TXT record in `PrintServerService.kt`. Forces macOS, Linux, and Windows clients to bypass PostScript CUPS filters (`cgpdftops`) and stream raw PDF documents (`srcdoc.pdf`) directly over IPP without filter text boxes.
