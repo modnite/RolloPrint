@@ -28,7 +28,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
     private val usbLock = Any()
 
     @Volatile
-    private var currentHardwareStates: Set<HardwareState> = setOf(HardwareState.UNKNOWN)
+    private var currentHardwareStates: Set<HardwareState> = emptySet()
 
     var onHardwareStateChanged: ((Set<HardwareState>) -> Unit)? = null
 

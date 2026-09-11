@@ -194,8 +194,37 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        TextView tvHardwareStatus = findViewById(R.id.tvHardwareStatus);
+        if (tvHardwareStatus != null) {
+            tvHardwareStatus.setText("● Hardware: Disconnected / Unknown");
+            tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+        }
+
         printManager = new UsbPrintManager(this, text -> {
             log(text);
+            return null;
+        });
+
+        printManager.setOnHardwareStateChanged(states -> {
+            runOnUiThread(() -> {
+                if (tvHardwareStatus == null) return;
+                if (states.contains(HardwareState.HEAD_OPEN)) {
+                    tvHardwareStatus.setText("● Hardware: Cover Open");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark));
+                } else if (states.contains(HardwareState.OUT_OF_PAPER)) {
+                    tvHardwareStatus.setText("● Hardware: Out of Paper (Red LED)");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
+                } else if (states.contains(HardwareState.READY)) {
+                    tvHardwareStatus.setText("● Hardware: Ready (Green LED)");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark));
+                } else if (states.contains(HardwareState.PRINTING)) {
+                    tvHardwareStatus.setText("● Hardware: Printing...");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
+                } else {
+                    tvHardwareStatus.setText("● Hardware: Disconnected / Unknown");
+                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+                }
+            });
             return null;
         });
 
@@ -285,7 +314,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(UsbPrintManager.ACTION_USB_PERMISSION);
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
 
-        String appVersion = "3.0.1";
+        String appVersion = "3.0.2";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
