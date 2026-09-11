@@ -344,8 +344,18 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
 
     fun runPrinterDiagnosticsAsync() {
         executor.execute {
+            val devices = usbManager.deviceList.values
+            logger("[USB_DIAG] --- USB Bus Scan (${devices.size} device(s) found) ---")
+            if (devices.isEmpty()) {
+                logger("[USB_DIAG] No USB devices found in android.hardware.usb.UsbManager.deviceList.")
+            } else {
+                for (dev in devices) {
+                    val hasPerm = usbManager.hasPermission(dev)
+                    logger("[USB_DIAG] Device: ${dev.deviceName} | VID=${dev.vendorId} (0x${dev.vendorId.toString(16).uppercase()}), PID=${dev.productId} (0x${dev.productId.toString(16).uppercase()}) | Class=${dev.deviceClass} | HasPermission=$hasPerm")
+                }
+            }
             val states = pollHardwareStatus()
-            logger("[DIAGNOSTIC] Current Rollo Hardware States: ${states.joinToString(", ")}")
+            logger("[USB_DIAG] Current Rollo Hardware States: ${states.joinToString(", ")}")
         }
     }
 
@@ -370,7 +380,7 @@ class UsbPrintManager(private val context: Context, private val logger: (String)
     }
 
     private fun requestPermission(device: UsbDevice) {
-        logger("Requesting USB Permission for ${device.deviceName} (VID=${device.vendorId}, PID=${device.productId})...")
+        logger("[USB] Requesting USB Permission for ${device.deviceName} (VID=${device.vendorId}, PID=${device.productId})...")
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
         val intent = Intent(ACTION_USB_PERMISSION).setPackage(context.packageName)
         val permissionIntent = PendingIntent.getBroadcast(context, 0, intent, flags)

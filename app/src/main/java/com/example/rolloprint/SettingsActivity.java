@@ -127,14 +127,18 @@ public class SettingsActivity extends AppCompatActivity {
 
         if (btnDiagnostics != null) {
             btnDiagnostics.setOnClickListener(v -> {
-                UsbPrintManager printManager = new UsbPrintManager(this, s -> null);
+                Toast.makeText(this, "Scanning USB bus for Rollo printer...", Toast.LENGTH_SHORT).show();
+                UsbPrintManager printManager = new UsbPrintManager(this, msg -> {
+                    runOnUiThread(() -> Toast.makeText(this, msg, Toast.LENGTH_SHORT).show());
+                    return null;
+                });
                 printManager.runPrinterDiagnosticsAsync();
             });
         }
 
         if (btnCheckUpdates != null) {
             btnCheckUpdates.setOnClickListener(v -> {
-                String currentVer = "3.0.0";
+                String currentVer = "3.0.4";
                 try {
                     currentVer = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 } catch (Exception e) {}
@@ -161,7 +165,7 @@ public class SettingsActivity extends AppCompatActivity {
                 .setTitle("RolloPrint update available (v" + latestTag + ")")
                 .setMessage(releaseNotes)
                 .setPositiveButton(R.string.update_now, (dialog, which) -> {
-                    String currentVer = "3.0.0";
+                    String currentVer = "3.0.4";
                     try { currentVer = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) {}
                     AppUpdateManager updateManager = new AppUpdateManager(this, currentVer, s -> null, (t, n, u) -> null);
                     updateManager.downloadAndInstallApk(apkUrl, msg -> {
