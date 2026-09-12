@@ -67,9 +67,23 @@
             android:layout_weight="1"
             android:insetLeft="0dp"
             android:insetRight="0dp"
+            android:paddingHorizontal="2dp"
             android:textSize="12sp"
             android:text="@string/export_cache_zip"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="6dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClearCacheGallery"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:paddingHorizontal="2dp"
+            android:textSize="12sp"
+            android:text="@string/clear_cache"
+            android:layout_marginEnd="6dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCloseCacheGallery"
@@ -79,6 +93,7 @@
             android:layout_weight="1"
             android:insetLeft="0dp"
             android:insetRight="0dp"
+            android:paddingHorizontal="2dp"
             android:textSize="12sp"
             android:text="@string/done" />
     </LinearLayout>

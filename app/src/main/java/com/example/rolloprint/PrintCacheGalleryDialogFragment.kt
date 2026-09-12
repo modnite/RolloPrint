@@ -43,6 +43,7 @@ class PrintCacheGalleryDialogFragment : DialogFragment() {
         val tvEmptyCachePlaceholder = view.findViewById<TextView>(R.id.tvEmptyCachePlaceholder)
         val btnToggleCacheSort = view.findViewById<ImageButton>(R.id.btnToggleCacheSort)
         val btnExportAllZip = view.findViewById<MaterialButton>(R.id.btnExportAllZip)
+        val btnClearCacheGallery = view.findViewById<MaterialButton>(R.id.btnClearCacheGallery)
         val btnCloseCacheGallery = view.findViewById<MaterialButton>(R.id.btnCloseCacheGallery)
 
         rvCacheItems.layoutManager = LinearLayoutManager(requireContext())
@@ -111,6 +112,14 @@ class PrintCacheGalleryDialogFragment : DialogFragment() {
                 startActivity(Intent.createChooser(shareIntent, "Share Print Cache ZIP"))
             } else {
                 Toast.makeText(requireContext(), R.string.no_cached_screenshots, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        btnClearCacheGallery?.setOnClickListener {
+            val cleared = PrintHistoryCacheManager.clearCache(requireContext())
+            if (cleared) {
+                Toast.makeText(requireContext(), R.string.cache_cleared, Toast.LENGTH_SHORT).show()
+                refreshAdapter()
             }
         }
 

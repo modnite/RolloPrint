@@ -24,9 +24,8 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
@@ -59,11 +58,11 @@ public class MainActivity extends AppCompatActivity {
     private AppUpdateManager appUpdateManager;
     private TextView tvLog;
     private ScrollView scrollViewLog;
-    private Bitmap lastRenderedBitmap;
 
     private MaterialSwitch switchServer;
     private TextView tvServerStatus;
     private TextView tvQueueStatus;
+    private TextView tvCacheStatus;
     private TextView tvHeaderVersion;
     private PrintServerService printServerService;
     private SharedPreferences prefs;
@@ -80,18 +79,6 @@ public class MainActivity extends AppCompatActivity {
             pollHandler.postDelayed(this, 5000); // Check every 5s quietly
         }
     };
-
-    private final ActivityResultLauncher<Intent> pdfPickerLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    Uri uri = result.getData().getData();
-                    if (uri != null) {
-                        renderAndPreview(uri);
-                    }
-                }
-            }
-    );
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -175,11 +162,13 @@ public class MainActivity extends AppCompatActivity {
 
         tvLog = findViewById(R.id.tvLog);
         scrollViewLog = findViewById(R.id.scrollViewLog);
-        Button btnSelect = findViewById(R.id.btnSelect);
         switchServer = findViewById(R.id.switchServer);
         tvServerStatus = findViewById(R.id.tvServerStatus);
         tvQueueStatus = findViewById(R.id.tvQueueStatus);
+        tvCacheStatus = findViewById(R.id.tvCacheStatus);
         Button btnViewQueue = findViewById(R.id.btnViewQueue);
+        Button btnViewCache = findViewById(R.id.btnViewCache);
+        Button btnClearCache = findViewById(R.id.btnClearCache);
         Button btnDumpLogs = findViewById(R.id.btnDumpLogs);
         tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
 
@@ -264,12 +253,28 @@ public class MainActivity extends AppCompatActivity {
                 log("[UI_EVENT] Clicked 'View queue' button.");
                 QueueManagerDialogFragment queueDialog = QueueManagerDialogFragment.Companion.newInstance(
                         jobQueueManager,
-                        job -> {
-                            showPrintPreview(job.getBitmap());
-                            return null;
-                        }
+                        job -> null
                 );
                 queueDialog.show(getSupportFragmentManager(), "QueueManager");
+            });
+        }
+
+        if (btnViewCache != null) {
+            btnViewCache.setOnClickListener(v -> {
+                log("[UI_EVENT] Clicked 'View cache' button.");
+                PrintCacheGalleryDialogFragment galleryDialog = PrintCacheGalleryDialogFragment.Companion.newInstance();
+                galleryDialog.show(getSupportFragmentManager(), "PrintCacheGallery");
+            });
+        }
+
+        if (btnClearCache != null) {
+            btnClearCache.setOnClickListener(v -> {
+                log("[UI_EVENT] Clicked 'Clear cache' button.");
+                boolean cleared = PrintHistoryCacheManager.clearCache(this);
+                if (cleared) {
+                    Toast.makeText(this, R.string.cache_cleared, Toast.LENGTH_SHORT).show();
+                    refreshCacheStatusCount();
+                }
             });
         }
 
@@ -286,14 +291,6 @@ public class MainActivity extends AppCompatActivity {
                 scrollViewLog.setVisibility(View.GONE);
                 ivLogExpandArrow.animate().rotation(0f).setDuration(200).start();
             }
-        });
-
-        btnSelect.setOnClickListener(v -> {
-            log("[UI_EVENT] Clicked 'Select PDF' button.");
-            log("[LOCAL] --- Direct TSPL Label Print ---");
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.setType("application/pdf");
-            pdfPickerLauncher.launch(intent);
         });
 
         switchServer.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -331,7 +328,7 @@ public class MainActivity extends AppCompatActivity {
 
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
 
-        String appVersion = "3.2.1";
+        String appVersion = "4.0.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
@@ -340,7 +337,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (savedInstanceState == null) {
             log("RolloPrint v" + appVersion + " Loaded.");
-            log("Ready to print 4x6 PDF labels.");
+            log("OpenPrinting CUPS Print Server Engine Active.");
         }
 
         // Start quiet 5s hardware status polling loop
@@ -363,8 +360,19 @@ public class MainActivity extends AppCompatActivity {
         // Proactively request all runtime permissions on first open
         checkAndRequestAllPermissions();
 
-        // Check if app was launched via Share / Open PDF intent
-        handleIncomingIntent(getIntent());
+        // Refresh cache count on launch
+        refreshCacheStatusCount();
+    }
+
+    private void refreshCacheStatusCount() {
+        if (tvCacheStatus != null) {
+            int count = PrintHistoryCacheManager.getCachedFileCount(this);
+            if (count == 0) {
+                tvCacheStatus.setText(R.string.cache_count_empty);
+            } else {
+                tvCacheStatus.setText("Cache: " + count + " screenshot(s)");
+            }
+        }
     }
 
     @Override
@@ -373,6 +381,7 @@ public class MainActivity extends AppCompatActivity {
         if (printManager != null) {
             printManager.runPrinterDiagnosticsAsync();
         }
+        refreshCacheStatusCount();
     }
 
     @Override
@@ -543,10 +552,7 @@ public class MainActivity extends AppCompatActivity {
                         });
                         return null;
                     },
-                    bitmap -> {
-                        runOnUiThread(() -> showPrintPreview(bitmap));
-                        return null;
-                    }
+                    bitmap -> null
             );
         }
     }
@@ -590,8 +596,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (pdfUri != null) {
-            log("[LOCAL] Received shared label via Share Sheet: " + pdfUri);
-            renderAndPreview(pdfUri);
+            log("[SHARED_PRINT] Received shared label via Share Sheet: " + pdfUri);
+            Bitmap bitmap = printManager.renderPdfToBitmap(pdfUri);
+            if (bitmap != null) {
+                int jobId = JobQueueManager.getNextJobId();
+                PrintHistoryCacheManager.saveJobScreenshot(this, bitmap, jobId, "shared_intent", "android");
+                jobQueueManager.addJob(bitmap, "Shared Label #" + jobId, false, jobId);
+            }
         }
     }
 
@@ -601,34 +612,6 @@ public class MainActivity extends AppCompatActivity {
             tvLog.append("[" + timestamp + "] " + text + "\n");
             scrollViewLog.post(() -> scrollViewLog.fullScroll(ScrollView.FOCUS_DOWN));
         });
-    }
-
-    private void renderAndPreview(Uri uri) {
-        Bitmap bitmap = printManager.renderPdfToBitmap(uri);
-        if (bitmap != null) {
-            lastRenderedBitmap = bitmap;
-            int localJobId = (int) (System.currentTimeMillis() % 10000);
-            PrintHistoryCacheManager.saveJobScreenshot(this, bitmap, localJobId, "local", "android");
-
-            boolean showPreview = prefs.getBoolean("PREF_LOCAL_PREVIEW", true);
-            if (showPreview) {
-                showPrintPreview(bitmap);
-            } else {
-                log("[LOCAL] Local preview disabled in settings. Adding to print queue...");
-                jobQueueManager.addJob(bitmap, "Local Label");
-            }
-        }
-    }
-
-    private void showPrintPreview(Bitmap bitmap) {
-        PrintPreviewDialogFragment previewDialog = PrintPreviewDialogFragment.Companion.newInstance(
-                bitmap,
-                () -> {
-                    log("[LOCAL] User confirmed print. Adding to print queue...");
-                    jobQueueManager.addJob(bitmap, "Local Label");
-                }
-        );
-        previewDialog.show(getSupportFragmentManager(), "PrintPreview");
     }
 
     @Override

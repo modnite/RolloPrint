@@ -4,6 +4,12 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v4.0.0` — September 6, 2026 at 10:00 AM
+- **Complete Removal of Local File Picker**: Removed the "Select PDF" card and local file picker pipeline. RolloPrint operates exclusively as a dedicated, black-box networked CUPS print server for Android Print Service, Share Sheet, AirPrint, IPP, and RAW 9100 streams.
+- **Native In-App OpenPrinting CUPS Server Dashboard**: Re-architected main dashboard into 5 native CUPS cards: CUPS Server Status, Printer State & Hardware, CUPS Print Queue, Print History Cache, and Activity Console.
+- **In-App Clear Cache Controls**: Added prominent "Clear Cache" buttons in the Print Cache Gallery modal and Settings screen to delete all cached JPEGs and reset cache counts in 1 tap.
+- **Wide 94% Dialog Window Expansion**: Overrode `onStart()` in `QueueManagerDialogFragment` and `PrintCacheGalleryDialogFragment` to expand window widths to 94% screen width, matching main/settings page horizontal margins.
+
 ### `v3.2.1` — September 6, 2026 at 9:30 AM
 - **Wide 94% Dialog Window Expansion**: Overrode `onStart()` in `QueueManagerDialogFragment.kt` and `PrintCacheGalleryDialogFragment.kt` to expand dialog window widths to 94% screen width, matching the 16dp horizontal margins of the Main and Settings pages.
 - **Global Sequential Job ID Generator**: Created a thread-safe atomic counter (`101`, `102`, `103`, `104`...) in `JobQueueManager.kt` shared across local PDF, IPP, AirPrint, and RAW 9100 print streams. Guarantees every cached screenshot and queue entry receives a unique, strictly incrementing Job ID.
@@ -17,6 +23,12 @@ All notable milestone releases for the **RolloPrint** application are documented
 ### `v3.1.2` — September 6, 2026 at 8:30 AM
 - **PostScript Filter Bypass & Direct PDF Streaming**: Removed `application/postscript` from IPP `documentFormatSupported` in `IppServer.kt` and mDNS `pdl` TXT record in `PrintServerService.kt`. Forces macOS, Linux, and Windows clients to bypass PostScript CUPS filters (`cgpdftops`) and stream raw PDF documents (`srcdoc.pdf`) directly over IPP without filter text boxes.
 - **Enhanced PostScript Text & Metadata Extraction**: Updated `createPdfFromText` in `IppServer.kt` to extract all PostScript document string calls (`(...) show`, `(...) Tj`, `(...) TJ`) and render actual document content onto 4x6 label canvases whenever PostScript streams are submitted.
+
+### `v4.0.0` — September 6, 2026 at 10:00 AM
+- **Complete Removal of Local File Picker**: Removed the "Select PDF" card and local file picker pipeline. RolloPrint operates exclusively as a dedicated, black-box networked CUPS print server for Android Print Service, Share Sheet, AirPrint, IPP, and RAW 9100 streams.
+- **Native In-App OpenPrinting CUPS Server Dashboard**: Re-architected main dashboard into 5 native CUPS cards: CUPS Server Status, Printer State & Hardware, CUPS Print Queue, Print History Cache, and Activity Console.
+- **In-App Clear Cache Controls**: Added prominent "Clear Cache" buttons in the Print Cache Gallery modal and Settings screen to delete all cached JPEGs and reset cache counts in 1 tap.
+- **Wide 94% Dialog Window Expansion**: Overrode `onStart()` in `QueueManagerDialogFragment` and `PrintCacheGalleryDialogFragment` to expand window widths to 94% screen width, matching main/settings page horizontal margins.
 
 ### `v3.2.1` — September 6, 2026 at 9:30 AM
 - **Wide 94% Dialog Window Expansion**: Overrode `onStart()` in `QueueManagerDialogFragment.kt` and `PrintCacheGalleryDialogFragment.kt` to expand dialog window widths to 94% screen width, matching the 16dp horizontal margins of the Main and Settings pages.

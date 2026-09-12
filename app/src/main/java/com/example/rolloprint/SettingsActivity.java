@@ -25,8 +25,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.io.File;
-
 public class SettingsActivity extends AppCompatActivity {
 
     private SharedPreferences prefs;
@@ -150,7 +148,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         if (btnCheckUpdates != null) {
             btnCheckUpdates.setOnClickListener(v -> {
-                String currentVer = "3.0.5";
+                String currentVer = "4.0.0";
                 try {
                     currentVer = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 } catch (Exception e) {}
@@ -177,7 +175,7 @@ public class SettingsActivity extends AppCompatActivity {
                 .setTitle("RolloPrint update available (v" + latestTag + ")")
                 .setMessage(releaseNotes)
                 .setPositiveButton(R.string.update_now, (dialog, which) -> {
-                    String currentVer = "3.0.5";
+                    String currentVer = "4.0.0";
                     try { currentVer = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) {}
                     AppUpdateManager updateManager = new AppUpdateManager(this, currentVer, s -> null, (t, n, u) -> null);
                     updateManager.downloadAndInstallApk(apkUrl, msg -> {
