@@ -19,13 +19,9 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
@@ -35,9 +31,14 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -45,38 +46,32 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
-    private UsbPrintManager printManager;
+    public UsbPrintManager printManager;
     private JobQueueManager jobQueueManager;
     private AppUpdateManager appUpdateManager;
-    private TextView tvLog;
-    private ScrollView scrollViewLog;
 
-    private MaterialSwitch switchServer;
-    private TextView tvServerStatus;
-    private TextView tvQueueStatus;
-    private TextView tvCacheStatus;
-    private TextView tvHeaderVersion;
     private PrintServerService printServerService;
     private SharedPreferences prefs;
     private boolean isServiceBound = false;
-    private boolean isUpdatingSwitchProgrammatically = false;
+
+    private PrintersTabFragment printersTab;
+    private JobsTabFragment jobsTab;
+    private AdminTabFragment adminTab;
+    private LogTabFragment logTab;
 
     private final Handler pollHandler = new Handler(Looper.getMainLooper());
     private final Runnable pollRunnable = new Runnable() {
         @Override
         public void run() {
             if (printManager != null) {
-                printManager.pollHardwareStatus(); // Quiet poll updates tvHardwareStatus badge
+                printManager.pollHardwareStatus();
             }
-            pollHandler.postDelayed(this, 5000); // Check every 5s quietly
+            pollHandler.postDelayed(this, 5000);
         }
     };
 
@@ -86,10 +81,7 @@ public class MainActivity extends AppCompatActivity {
             PrintServerService.LocalBinder binder = (PrintServerService.LocalBinder) service;
             printServerService = binder.getService();
             isServiceBound = true;
-
-            if (switchServer.isChecked()) {
-                startIppServer();
-            }
+            // Let the Admin tab handle whether it should be started
         }
 
         @Override
@@ -133,17 +125,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         prefs = getSharedPreferences("rollo_prefs", MODE_PRIVATE);
+        applyAppTheme(prefs.getInt("PREF_APP_THEME", 0));
 
-        // Apply saved App Theme before layout inflation
-        int savedTheme = prefs.getInt("PREF_APP_THEME", 0);
-        applyAppTheme(savedTheme);
-
-        // Enable edge-to-edge drawing so layout responds to system bars & display cutouts
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-
         setContentView(R.layout.activity_main);
 
-        // Invert status bar & navigation bar icons in Light Mode so they don't wash out
         boolean isNightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         if (insetsController != null) {
@@ -151,8 +137,8 @@ public class MainActivity extends AppCompatActivity {
             insetsController.setAppearanceLightNavigationBars(!isNightMode);
         }
 
-        View mainScrollView = findViewById(R.id.mainScrollView);
-        ViewCompat.setOnApplyWindowInsetsListener(mainScrollView, (v, windowInsets) -> {
+        View mainRoot = findViewById(R.id.mainRoot);
+        ViewCompat.setOnApplyWindowInsetsListener(mainRoot, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(
                     WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
             );
@@ -160,47 +146,24 @@ public class MainActivity extends AppCompatActivity {
             return WindowInsetsCompat.CONSUMED;
         });
 
-        tvLog = findViewById(R.id.tvLog);
-        scrollViewLog = findViewById(R.id.scrollViewLog);
-        switchServer = findViewById(R.id.switchServer);
-        tvServerStatus = findViewById(R.id.tvServerStatus);
-        tvQueueStatus = findViewById(R.id.tvQueueStatus);
-        tvCacheStatus = findViewById(R.id.tvCacheStatus);
-        Button btnViewQueue = findViewById(R.id.btnViewQueue);
-        Button btnViewCache = findViewById(R.id.btnViewCache);
-        Button btnClearCache = findViewById(R.id.btnClearCache);
-        Button btnDumpLogs = findViewById(R.id.btnDumpLogs);
-        tvHeaderVersion = findViewById(R.id.tvHeaderVersion);
+        // Init Tabs
+        printersTab = new PrintersTabFragment();
+        jobsTab = new JobsTabFragment();
+        adminTab = new AdminTabFragment();
+        logTab = new LogTabFragment();
 
-        TextView tvHardwareStatus = findViewById(R.id.tvHardwareStatus);
-        if (tvHardwareStatus != null) {
-            tvHardwareStatus.setText("● Hardware: Disconnected / Unknown");
-            tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
-        }
+        ViewPager2 viewPager = findViewById(R.id.viewPager);
+        TabLayout tabLayout = findViewById(R.id.tabLayout);
 
-        if (savedInstanceState != null) {
-            String savedLog = savedInstanceState.getString("SAVED_LOG_TEXT", "");
-            if (!savedLog.isEmpty()) {
-                tvLog.setText(savedLog);
+        viewPager.setAdapter(new CupsPagerAdapter(this));
+        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
+            switch (position) {
+                case 0: tab.setText("Printers"); break;
+                case 1: tab.setText("Jobs"); break;
+                case 2: tab.setText("Admin"); break;
+                case 3: tab.setText("Log"); break;
             }
-            boolean savedExpanded = savedInstanceState.getBoolean("SAVED_LOG_EXPANDED", false);
-            if (savedExpanded && scrollViewLog != null) {
-                scrollViewLog.setVisibility(View.VISIBLE);
-            }
-        }
-
-        ImageButton btnSettings = findViewById(R.id.btnSettings);
-        btnSettings.setOnClickListener(v -> {
-            log("[UI_EVENT] Opening Settings Activity.");
-            startActivity(new Intent(this, SettingsActivity.class));
-        });
-
-        if (btnDumpLogs != null) {
-            btnDumpLogs.setOnClickListener(v -> {
-                log("[UI_EVENT] Clicked 'Dump log' button.");
-                dumpActivityLogsToEtherpad();
-            });
-        }
+        }).attach();
 
         printManager = new UsbPrintManager(this, text -> {
             log(text);
@@ -209,22 +172,8 @@ public class MainActivity extends AppCompatActivity {
 
         printManager.setOnHardwareStateChanged(states -> {
             runOnUiThread(() -> {
-                if (tvHardwareStatus == null) return;
-                if (states.contains(HardwareState.HEAD_OPEN)) {
-                    tvHardwareStatus.setText("● Hardware: Cover Open");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark));
-                } else if (states.contains(HardwareState.OUT_OF_PAPER)) {
-                    tvHardwareStatus.setText("● Hardware: Out of Paper (Red LED)");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
-                } else if (states.contains(HardwareState.READY)) {
-                    tvHardwareStatus.setText("● Hardware: Ready (Green LED)");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark));
-                } else if (states.contains(HardwareState.PRINTING)) {
-                    tvHardwareStatus.setText("● Hardware: Printing...");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
-                } else {
-                    tvHardwareStatus.setText("● Hardware: Disconnected / Unknown");
-                    tvHardwareStatus.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+                if (printersTab != null) {
+                    printersTab.updateHardwareBadge(states);
                 }
             });
             return null;
@@ -237,110 +186,28 @@ public class MainActivity extends AppCompatActivity {
                     return null;
                 },
                 count -> {
-                    runOnUiThread(() -> {
-                        if (count == 0) {
-                            tvQueueStatus.setText(R.string.queue_empty);
-                        } else {
-                            tvQueueStatus.setText("Queue: " + count + " job(s) waiting");
-                        }
-                    });
+                    // Update any active queue count displays if needed
                     return null;
                 }
         );
 
-        if (btnViewQueue != null) {
-            btnViewQueue.setOnClickListener(v -> {
-                log("[UI_EVENT] Clicked 'View queue' button.");
-                QueueManagerDialogFragment queueDialog = QueueManagerDialogFragment.Companion.newInstance(
-                        jobQueueManager,
-                        job -> null
-                );
-                queueDialog.show(getSupportFragmentManager(), "QueueManager");
-            });
-        }
-
-        if (btnViewCache != null) {
-            btnViewCache.setOnClickListener(v -> {
-                log("[UI_EVENT] Clicked 'View cache' button.");
-                PrintCacheGalleryDialogFragment galleryDialog = PrintCacheGalleryDialogFragment.Companion.newInstance();
-                galleryDialog.show(getSupportFragmentManager(), "PrintCacheGallery");
-            });
-        }
-
-        if (btnClearCache != null) {
-            btnClearCache.setOnClickListener(v -> {
-                log("[UI_EVENT] Clicked 'Clear cache' button.");
-                boolean cleared = PrintHistoryCacheManager.clearCache(this);
-                if (cleared) {
-                    Toast.makeText(this, R.string.cache_cleared, Toast.LENGTH_SHORT).show();
-                    refreshCacheStatusCount();
-                }
-            });
-        }
-
-        View layoutLogHeaderClickable = findViewById(R.id.layoutLogHeaderClickable);
-        ImageView ivLogExpandArrow = findViewById(R.id.ivLogExpandArrow);
-
-        layoutLogHeaderClickable.setOnClickListener(v -> {
-            boolean expanding = scrollViewLog.getVisibility() != View.VISIBLE;
-            log("[UI_EVENT] Tapped Activity Log console header -> " + (expanding ? "EXPANDED" : "COLLAPSED"));
-            if (expanding) {
-                scrollViewLog.setVisibility(View.VISIBLE);
-                ivLogExpandArrow.animate().rotation(180f).setDuration(200).start();
-            } else {
-                scrollViewLog.setVisibility(View.GONE);
-                ivLogExpandArrow.animate().rotation(0f).setDuration(200).start();
-            }
-        });
-
-        switchServer.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isUpdatingSwitchProgrammatically) return;
-            log("[UI_EVENT] Print Server switch toggled to: " + isChecked);
-
-            if (isChecked) {
-                if (isServiceBound && printServerService != null) {
-                    startIppServer();
-                } else {
-                    Intent intent = new Intent(this, PrintServerService.class);
-                    intent.setAction(PrintServerService.ACTION_START);
-                    try {
-                        ContextCompat.startForegroundService(this, intent);
-                        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
-                    } catch (Exception e) {
-                        log("ERROR starting IPP print server: " + e.getMessage());
-                        isUpdatingSwitchProgrammatically = true;
-                        switchServer.setChecked(false);
-                        isUpdatingSwitchProgrammatically = false;
-                    }
-                }
-            } else {
-                if (isServiceBound && printServerService != null) {
-                    printServerService.stopServer();
-                }
-                tvServerStatus.setText("Status: Disabled (Port 8631)");
-            }
-        });
+        Intent intent = new Intent(this, PrintServerService.class);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(UsbPrintManager.ACTION_USB_PERMISSION);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-
         ContextCompat.registerReceiver(this, usbReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
 
-        String appVersion = "4.0.0";
+        String appVersion = "5.0.0";
         try {
             appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {}
 
-        tvHeaderVersion.setText("v" + appVersion);
+        log("Cuppa v" + appVersion + " Loaded.");
+        log("OpenPrinting CUPS Print Server Engine Active.");
 
-        if (savedInstanceState == null) {
-            log("RolloPrint v" + appVersion + " Loaded.");
-            log("OpenPrinting CUPS Print Server Engine Active.");
-        }
-
-        // Start quiet 5s hardware status polling loop
         pollHandler.postDelayed(pollRunnable, 1000);
 
         appUpdateManager = new AppUpdateManager(
@@ -356,86 +223,22 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
         appUpdateManager.startPeriodicCheck();
-
-        // Proactively request all runtime permissions on first open
         checkAndRequestAllPermissions();
-
-        // Refresh cache count on launch
-        refreshCacheStatusCount();
     }
 
-    private void refreshCacheStatusCount() {
-        if (tvCacheStatus != null) {
-            int count = PrintHistoryCacheManager.getCachedFileCount(this);
-            if (count == 0) {
-                tvCacheStatus.setText(R.string.cache_count_empty);
-            } else {
-                tvCacheStatus.setText("Cache: " + count + " screenshot(s)");
-            }
+    public void log(String text) {
+        if (logTab != null) {
+            logTab.log(text);
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (printManager != null) {
-            printManager.runPrinterDiagnosticsAsync();
-        }
-        refreshCacheStatusCount();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        if (tvLog != null) {
-            outState.putString("SAVED_LOG_TEXT", tvLog.getText().toString());
-        }
-        if (scrollViewLog != null) {
-            outState.putBoolean("SAVED_LOG_EXPANDED", scrollViewLog.getVisibility() == View.VISIBLE);
-        }
-    }
-
-    private void applyAppTheme(int themeMode) {
-        switch (themeMode) {
-            case 1:
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-                break;
-            case 2:
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-                break;
-            default:
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
-                break;
-        }
-    }
-
-    private void showUpdateAvailableDialog(String latestTag, String releaseNotes, String apkUrl) {
-        new MaterialAlertDialogBuilder(this)
-                .setTitle("RolloPrint update available (v" + latestTag + ")")
-                .setMessage(releaseNotes)
-                .setPositiveButton(R.string.update_now, (dialog, which) -> {
-                    log("[UI_EVENT] User accepted update. Downloading v" + latestTag + "...");
-                    if (appUpdateManager != null) {
-                        appUpdateManager.downloadAndInstallApk(apkUrl, msg -> {
-                            log(msg);
-                            return null;
-                        });
-                    }
-                })
-                .setNegativeButton(R.string.ignore, (dialog, which) -> {
-                    log("[UI_EVENT] User ignored update v" + latestTag + ".");
-                })
-                .show();
-    }
-
-    private void dumpActivityLogsToEtherpad() {
+    public void dumpActivityLogsToEtherpad() {
         String etherpadUrl = prefs.getString("PREF_ETHERPAD_URL", "").trim();
         String apiKey = prefs.getString("PREF_ETHERPAD_API_KEY", "").trim();
-        String logContent = tvLog.getText().toString();
+        String logContent = logTab != null ? logTab.getLogText() : "";
 
         if (etherpadUrl.isEmpty()) {
-            log("[ETHERPAD] No Pastebin URL configured. Please set your Pastebin URL in Print settings.");
-            startActivity(new Intent(this, SettingsActivity.class));
+            log("[ETHERPAD] No Pastebin URL configured in Admin settings.");
             return;
         }
 
@@ -486,7 +289,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                // Multipart Form-Data Import to /p/notepad/import (Works on all Etherpad instances without API key)
                 String importUrl = scheme + "://" + host + ":" + port + "/p/" + padId + "/import";
                 postMultipartFileToEtherpad(importUrl, padId, logContent);
 
@@ -529,89 +331,50 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void startIppServer() {
-        if (printServerService != null) {
-            printServerService.initializeServer(
-                    printManager,
-                    jobQueueManager,
-                    text -> {
-                        log(text);
-                        return null;
-                    },
-                    (running, ip) -> {
-                        runOnUiThread(() -> {
-                            isUpdatingSwitchProgrammatically = true;
-                            if (running && ip != null) {
-                                tvServerStatus.setText("Status: Active on " + ip + ":8631 (Driverless IPP)");
-                                if (!switchServer.isChecked()) switchServer.setChecked(true);
-                            } else {
-                                tvServerStatus.setText("Status: Disabled (Port 8631)");
-                                if (switchServer.isChecked()) switchServer.setChecked(false);
-                            }
-                            isUpdatingSwitchProgrammatically = false;
-                        });
-                        return null;
-                    },
-                    bitmap -> null
-            );
-        }
-    }
-
     private void checkAndRequestAllPermissions() {
         List<String> permissionsNeeded = new ArrayList<>();
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
             }
         }
-
         if (!permissionsNeeded.isEmpty()) {
             log("Prompting for initial app permissions...");
             ActivityCompat.requestPermissions(this, permissionsNeeded.toArray(new String[0]), 200);
         }
     }
 
+    private void applyAppTheme(int themeMode) {
+        switch (themeMode) {
+            case 1: AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES); break;
+            case 2: AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO); break;
+            default: AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM); break;
+        }
+    }
+
+    private void showUpdateAvailableDialog(String latestTag, String releaseNotes, String apkUrl) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Cuppa update available (v" + latestTag + ")")
+                .setMessage(releaseNotes)
+                .setPositiveButton(R.string.update_now, (dialog, which) -> {
+                    log("[UI_EVENT] User accepted update. Downloading v" + latestTag + "...");
+                    if (appUpdateManager != null) {
+                        appUpdateManager.downloadAndInstallApk(apkUrl, msg -> {
+                            log(msg);
+                            return null;
+                        });
+                    }
+                })
+                .setNegativeButton(R.string.ignore, null)
+                .show();
+    }
+
     @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        handleIncomingIntent(intent);
-    }
-
-    private void handleIncomingIntent(Intent intent) {
-        if (intent == null) return;
-        String action = intent.getAction();
-        String type = intent.getType();
-
-        Uri pdfUri = null;
-        if (Intent.ACTION_SEND.equals(action) && type != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                pdfUri = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class);
-            } else {
-                pdfUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
-            }
-        } else if (Intent.ACTION_VIEW.equals(action)) {
-            pdfUri = intent.getData();
+    protected void onResume() {
+        super.onResume();
+        if (printManager != null) {
+            printManager.runPrinterDiagnosticsAsync();
         }
-
-        if (pdfUri != null) {
-            log("[SHARED_PRINT] Received shared label via Share Sheet: " + pdfUri);
-            Bitmap bitmap = printManager.renderPdfToBitmap(pdfUri);
-            if (bitmap != null) {
-                int jobId = JobQueueManager.getNextJobId();
-                PrintHistoryCacheManager.saveJobScreenshot(this, bitmap, jobId, "shared_intent", "android");
-                jobQueueManager.addJob(bitmap, "Shared Label #" + jobId, false, jobId);
-            }
-        }
-    }
-
-    private void log(String text) {
-        runOnUiThread(() -> {
-            String timestamp = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
-            tvLog.append("[" + timestamp + "] " + text + "\n");
-            scrollViewLog.post(() -> scrollViewLog.fullScroll(ScrollView.FOCUS_DOWN));
-        });
     }
 
     @Override
@@ -625,5 +388,23 @@ public class MainActivity extends AppCompatActivity {
         try {
             unregisterReceiver(usbReceiver);
         } catch (Exception e) { }
+    }
+
+    private class CupsPagerAdapter extends FragmentStateAdapter {
+        public CupsPagerAdapter(@NonNull FragmentActivity fragmentActivity) {
+            super(fragmentActivity);
+        }
+        @NonNull @Override public Fragment createFragment(int position) {
+            switch (position) {
+                case 0: return printersTab;
+                case 1:
+                    jobsTab.setJobQueueManager(jobQueueManager);
+                    return jobsTab;
+                case 2: return adminTab;
+                case 3: return logTab;
+                default: return printersTab;
+            }
+        }
+        @Override public int getItemCount() { return 4; }
     }
 }

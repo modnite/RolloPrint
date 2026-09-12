@@ -1,8 +1,17 @@
 # Changelog
 
-All notable milestone releases for the **RolloPrint** application are documented in this file.
+All notable milestone releases for the **Cuppa** (formerly RolloPrint) application are documented in this file.
 
 ---
+
+### `v5.0.0` — September 11, 2026
+- **Global Project Rebranding (`Cuppa`)**: The application has been entirely rewritten and rebranded as **Cuppa** (formerly RolloPrint), accompanied by a brand new coffee cup application icon.
+- **100% Ground-Up UI/UX Overhaul (Tabbed CUPS WebUI Port)**: Completely nuked the old single-card layout. Cuppa now features a modern Material 3 Tabbed & Navigation Bar architecture mirroring the official OpenPrinting CUPS 2.4.x WebUI.
+- **Tab 1: Printers (`PrinterListFragment`)**: Lists installed CUPS printers, featuring the primary default `Rollo_X1038` and an "Add Printer" workflow for discovering secondary network/USB printers.
+- **Tab 2: Jobs (`CupsJobsFragment`)**: Features a native CUPS Jobs Table listing Active and Completed Jobs with Client OS Badges, Formats, and direct actions (**Cancel**, **Hold**, **Release**, **Reprint**). Replaces flawed modal popups entirely.
+- **Tab 3: Administration (`CupsAdminFragment`)**: OpenPrinting CUPS Server Configuration panel managing Server IPs, AirPrint mDNS, RAW 9100 toggles, and system maintenance.
+- **Tab 4: Server Log (`CupsLogFragment`)**: Full-screen, real-time streaming CUPS system log with 1-tap "Dump Log" action.
+- **Multi-Printer Registry Architecture (`CupsPrinterRegistry.kt`)**: Central registry tracking multiple active printers and device URIs concurrently.
 
 ### `v4.0.0` — September 6, 2026 at 10:00 AM
 - **Complete Removal of Local File Picker**: Removed the "Select PDF" card and local file picker pipeline. RolloPrint operates exclusively as a dedicated, black-box networked CUPS print server for Android Print Service, Share Sheet, AirPrint, IPP, and RAW 9100 streams.
@@ -23,6 +32,15 @@ All notable milestone releases for the **RolloPrint** application are documented
 ### `v3.1.2` — September 6, 2026 at 8:30 AM
 - **PostScript Filter Bypass & Direct PDF Streaming**: Removed `application/postscript` from IPP `documentFormatSupported` in `IppServer.kt` and mDNS `pdl` TXT record in `PrintServerService.kt`. Forces macOS, Linux, and Windows clients to bypass PostScript CUPS filters (`cgpdftops`) and stream raw PDF documents (`srcdoc.pdf`) directly over IPP without filter text boxes.
 - **Enhanced PostScript Text & Metadata Extraction**: Updated `createPdfFromText` in `IppServer.kt` to extract all PostScript document string calls (`(...) show`, `(...) Tj`, `(...) TJ`) and render actual document content onto 4x6 label canvases whenever PostScript streams are submitted.
+
+### `v5.0.0` — September 11, 2026
+- **Global Project Rebranding (`Cuppa`)**: The application has been entirely rewritten and rebranded as **Cuppa** (formerly RolloPrint), accompanied by a brand new coffee cup application icon.
+- **100% Ground-Up UI/UX Overhaul (Tabbed CUPS WebUI Port)**: Completely nuked the old single-card layout. Cuppa now features a modern Material 3 Tabbed & Navigation Bar architecture mirroring the official OpenPrinting CUPS 2.4.x WebUI.
+- **Tab 1: Printers (`PrinterListFragment`)**: Lists installed CUPS printers, featuring the primary default `Rollo_X1038` and an "Add Printer" workflow for discovering secondary network/USB printers.
+- **Tab 2: Jobs (`CupsJobsFragment`)**: Features a native CUPS Jobs Table listing Active and Completed Jobs with Client OS Badges, Formats, and direct actions (**Cancel**, **Hold**, **Release**, **Reprint**). Replaces flawed modal popups entirely.
+- **Tab 3: Administration (`CupsAdminFragment`)**: OpenPrinting CUPS Server Configuration panel managing Server IPs, AirPrint mDNS, RAW 9100 toggles, and system maintenance.
+- **Tab 4: Server Log (`CupsLogFragment`)**: Full-screen, real-time streaming CUPS system log with 1-tap "Dump Log" action.
+- **Multi-Printer Registry Architecture (`CupsPrinterRegistry.kt`)**: Central registry tracking multiple active printers and device URIs concurrently.
 
 ### `v4.0.0` — September 6, 2026 at 10:00 AM
 - **Complete Removal of Local File Picker**: Removed the "Select PDF" card and local file picker pipeline. RolloPrint operates exclusively as a dedicated, black-box networked CUPS print server for Android Print Service, Share Sheet, AirPrint, IPP, and RAW 9100 streams.

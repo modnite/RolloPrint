@@ -22,7 +22,7 @@ class AppUpdateManager(
     private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
 
     companion object {
-        const val GITHUB_RELEASE_API = "https://api.github.com/repos/modnite/RolloPrint/releases/latest"
+        const val GITHUB_RELEASE_API = "https://api.github.com/repos/modnite/Cuppa/releases/latest"
     }
 
     fun startPeriodicCheck() {
@@ -34,12 +34,12 @@ class AppUpdateManager(
     fun checkForUpdates(silent: Boolean = false) {
         Executors.newSingleThreadExecutor().execute {
             try {
-                if (!silent) logger("[UPDATE] Checking GitHub for new RolloPrint releases...")
+                if (!silent) logger("[UPDATE] Checking GitHub for new Cuppa releases...")
                 val url = URL(GITHUB_RELEASE_API)
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "GET"
                 conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
-                conn.setRequestProperty("User-Agent", "RolloPrint-AndroidApp")
+                conn.setRequestProperty("User-Agent", "Cuppa-AndroidApp")
                 conn.connectTimeout = 5000
                 conn.readTimeout = 5000
 
@@ -67,7 +67,7 @@ class AppUpdateManager(
                         logger("[UPDATE] New version available: v$tagName (Current: v$currentVersionName)")
                         onUpdateAvailable(tagName, body, apkUrl)
                     } else {
-                        if (!silent) logger("[UPDATE] RolloPrint v$currentVersionName is up to date.")
+                        if (!silent) logger("[UPDATE] Cuppa v$currentVersionName is up to date.")
                     }
                 } else {
                     if (!silent) logger("[UPDATE] GitHub API returned HTTP ${conn.responseCode}")
@@ -81,13 +81,13 @@ class AppUpdateManager(
     fun downloadAndInstallApk(apkUrl: String, onProgress: (String) -> Unit) {
         Executors.newSingleThreadExecutor().execute {
             try {
-                onProgress("[UPDATE] Downloading RolloPrint update...")
+                onProgress("[UPDATE] Downloading Cuppa update...")
                 val url = URL(apkUrl)
                 val conn = url.openConnection() as HttpURLConnection
                 conn.connectTimeout = 10000
                 conn.readTimeout = 10000
 
-                val apkFile = File(context.cacheDir, "RolloPrint_Update.apk")
+                val apkFile = File(context.cacheDir, "Cuppa_Update.apk")
                 conn.inputStream.use { input ->
                     FileOutputStream(apkFile).use { output ->
                         input.copyTo(output)

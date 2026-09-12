@@ -23,5 +23,5 @@ dependencyResolutionManagement {
         }
 }
 
-rootProject.name = "RolloPrint"
+rootProject.name = "Cuppa"
 include(":app")

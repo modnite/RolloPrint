@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">RolloPrint</string>
+    <string name="app_name">Cuppa</string>
     <string name="select_pdf_print">Select PDF</string>
     <string name="logs_header">Activity log</string>
     <string name="print_server">Print server</string>
