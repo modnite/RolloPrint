@@ -2,6 +2,7 @@ package com.example.rolloprint
 
 import android.graphics.Bitmap
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
 
 enum class JobStatus {
     PENDING,
@@ -29,6 +30,13 @@ class JobQueueManager(
 
     var onQueueJobsChanged: ((List<PrintJob>) -> Unit)? = null
 
+    companion object {
+        private val globalJobIdCounter = AtomicInteger(101)
+
+        @JvmStatic
+        fun getNextJobId(): Int = globalJobIdCounter.getAndIncrement()
+    }
+
     private fun notifyQueueChanged() {
         val jobs = queue.toList()
         onQueueChanged(jobs.size)
@@ -36,13 +44,12 @@ class JobQueueManager(
     }
 
     @JvmOverloads
-    fun addJob(bitmap: Bitmap, name: String, forceHold: Boolean = false) {
-        val jobId = (1000..9999).random()
+    fun addJob(bitmap: Bitmap, name: String, forceHold: Boolean = false, assignedJobId: Int = getNextJobId()) {
         val initialStatus = if (forceHold) JobStatus.HELD else JobStatus.PENDING
-        val job = PrintJob(jobId, bitmap, name, initialStatus)
+        val job = PrintJob(assignedJobId, bitmap, name, initialStatus)
         queue.add(job)
         val modeStr = if (forceHold) "HELD (manual hold enabled)" else "PENDING"
-        logger("[QUEUE] Job '$name' (#$jobId) added to queue [$modeStr]. Total in queue: ${queue.size}")
+        logger("[QUEUE] Job '$name' (#$assignedJobId) added to queue [$modeStr]. Total in queue: ${queue.size}")
         notifyQueueChanged()
         if (!forceHold) {
             processNextJob()

@@ -4,6 +4,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 
 ---
 
+### `v3.2.1` — September 6, 2026 at 9:30 AM
+- **Wide 94% Dialog Window Expansion**: Overrode `onStart()` in `QueueManagerDialogFragment.kt` and `PrintCacheGalleryDialogFragment.kt` to expand dialog window widths to 94% screen width, matching the 16dp horizontal margins of the Main and Settings pages.
+- **Global Sequential Job ID Generator**: Created a thread-safe atomic counter (`101`, `102`, `103`, `104`...) in `JobQueueManager.kt` shared across local PDF, IPP, AirPrint, and RAW 9100 print streams. Guarantees every cached screenshot and queue entry receives a unique, strictly incrementing Job ID.
+
 ### `v3.2.0` — September 6, 2026 at 9:00 AM
 - **In-App OpenPrinting CUPS Control Panel**: Replaced web UI requirements with a native Material 3 in-app CUPS control panel inside `QueueManagerDialogFragment` displaying `Rollo Thermal Printer 4x6 (Idle - Accepting Jobs)`, active protocols, client OS badges (`[iOS]`, `[macOS]`, `[Windows]`), and job formats.
 - **In-App Print Cache Screenshot Gallery**: Added `PrintCacheGalleryDialogFragment` allowing users to view rendered $832 \times 1218$ JPEG thumbnails directly in-app, sort by Newest/Oldest, and export individual JPEGs on demand via `FileProvider`.
@@ -13,6 +17,10 @@ All notable milestone releases for the **RolloPrint** application are documented
 ### `v3.1.2` — September 6, 2026 at 8:30 AM
 - **PostScript Filter Bypass & Direct PDF Streaming**: Removed `application/postscript` from IPP `documentFormatSupported` in `IppServer.kt` and mDNS `pdl` TXT record in `PrintServerService.kt`. Forces macOS, Linux, and Windows clients to bypass PostScript CUPS filters (`cgpdftops`) and stream raw PDF documents (`srcdoc.pdf`) directly over IPP without filter text boxes.
 - **Enhanced PostScript Text & Metadata Extraction**: Updated `createPdfFromText` in `IppServer.kt` to extract all PostScript document string calls (`(...) show`, `(...) Tj`, `(...) TJ`) and render actual document content onto 4x6 label canvases whenever PostScript streams are submitted.
+
+### `v3.2.1` — September 6, 2026 at 9:30 AM
+- **Wide 94% Dialog Window Expansion**: Overrode `onStart()` in `QueueManagerDialogFragment.kt` and `PrintCacheGalleryDialogFragment.kt` to expand dialog window widths to 94% screen width, matching the 16dp horizontal margins of the Main and Settings pages.
+- **Global Sequential Job ID Generator**: Created a thread-safe atomic counter (`101`, `102`, `103`, `104`...) in `JobQueueManager.kt` shared across local PDF, IPP, AirPrint, and RAW 9100 print streams. Guarantees every cached screenshot and queue entry receives a unique, strictly incrementing Job ID.
 
 ### `v3.2.0` — September 6, 2026 at 9:00 AM
 - **In-App OpenPrinting CUPS Control Panel**: Replaced web UI requirements with a native Material 3 in-app CUPS control panel inside `QueueManagerDialogFragment` displaying `Rollo Thermal Printer 4x6 (Idle - Accepting Jobs)`, active protocols, client OS badges (`[iOS]`, `[macOS]`, `[Windows]`), and job formats.

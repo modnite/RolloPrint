@@ -11,7 +11,6 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicInteger
 
 class RawSocketServer(
     private val context: Context,
@@ -23,7 +22,6 @@ class RawSocketServer(
     @Volatile
     private var isRunning = false
     private val serverExecutor = Executors.newCachedThreadPool()
-    private val rawJobIdCounter = AtomicInteger(100)
 
     companion object {
         const val RAW_PORT = 9100
@@ -85,7 +83,7 @@ class RawSocketServer(
 
                 val data = baos.toByteArray()
                 if (data.isNotEmpty()) {
-                    val jobId = rawJobIdCounter.getAndIncrement()
+                    val jobId = JobQueueManager.getNextJobId()
                     val dataStr = String(data, 0, Math.min(data.size, 512), Charsets.US_ASCII).lowercase()
                     val osFamily = when {
                         dataStr.contains("mac") || dataStr.contains("apple") || dataStr.contains("darwin") -> "macos"
@@ -132,7 +130,7 @@ class RawSocketServer(
         if (bitmap != null) {
             PrintHistoryCacheManager.saveJobScreenshot(context, bitmap, jobId, "raw_network", osFamily)
             logger("[RAW_9100] Stream converted to 816x1218 bitmap. Adding RAW Job #$jobId [$osFamily] to Print Queue...")
-            jobQueueManager.addJob(bitmap, "RAW Job #$jobId ($osFamily)")
+            jobQueueManager.addJob(bitmap, "RAW Job #$jobId ($osFamily)", false, jobId)
         } else {
             logger("[RAW_9100] ERROR: Failed to render bitmap for RAW Job #$jobId")
         }

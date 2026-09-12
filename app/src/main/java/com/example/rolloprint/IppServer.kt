@@ -47,7 +47,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicInteger
 
 class IppServer(
     private val context: Context,
@@ -61,7 +60,6 @@ class IppServer(
     @Volatile
     private var isRunning = false
     private val serverExecutor = Executors.newCachedThreadPool()
-    private val jobIdCounter = AtomicInteger(1)
     @Volatile
     private var lastCreatedJobId: Int = 0
 
@@ -183,13 +181,13 @@ class IppServer(
                         sendSimpleIppResponse(socket, version, requestId, Status.successfulOk)
                     }
                     Operation.createJob -> {
-                        val jobId = jobIdCounter.getAndIncrement()
+                        val jobId = JobQueueManager.getNextJobId()
                         lastCreatedJobId = jobId
                         logger("[IPP] Create-Job request #$jobId (req-id=$requestId, v=$version) from $clientIp [$osFamily]")
                         sendCreateJobResponse(socket, version, requestId, jobId)
                     }
                     Operation.sendDocument -> {
-                        val jobId = if (lastCreatedJobId > 0) lastCreatedJobId else jobIdCounter.getAndIncrement()
+                        val jobId = if (lastCreatedJobId > 0) lastCreatedJobId else JobQueueManager.getNextJobId()
                         logger("[IPP] Send-Document #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp [$osFamily]")
 
                         sendPrintJobResponse(socket, version, requestId, jobId)
@@ -200,7 +198,7 @@ class IppServer(
                         }
                     }
                     Operation.printJob -> {
-                        val jobId = jobIdCounter.getAndIncrement()
+                        val jobId = JobQueueManager.getNextJobId()
                         logger("[IPP] Print-Job #$jobId received (${bodyData.size} bytes, req-id=$requestId, v=$version) from $clientIp [$osFamily]")
 
                         sendPrintJobResponse(socket, version, requestId, jobId)
@@ -234,6 +232,7 @@ class IppServer(
         val dataStr = String(data, 0, Math.min(data.size, 1024), Charsets.US_ASCII).lowercase()
 
         return when {
+            lowerHeader.contains("iphone") || lowerHeader.contains("ipad") || lowerHeader.contains("ipod") || lowerHeader.contains("ios") -> "ios"
             lowerHeader.contains("macintosh") || lowerHeader.contains("darwin") || lowerHeader.contains("mac os x") || lowerHeader.contains("cfnetwork") || dataStr.contains("cgpdftops") || dataStr.contains("safari") || dataStr.contains("mac") || dataStr.contains("apple") -> "macos"
             lowerHeader.contains("windows") || lowerHeader.contains("microsoft") || lowerHeader.contains("nt 10.0") || lowerHeader.contains("nt 11.0") -> "windows"
             lowerHeader.contains("linux") || lowerHeader.contains("ubuntu") || lowerHeader.contains("debian") -> "linux"
@@ -843,7 +842,7 @@ class IppServer(
                 onNetworkBitmapRendered.invoke(bitmap)
             } else {
                 logger("[IPP] PDF converted to 816x1218 bitmap. Adding Network Job #$jobId [$osFamily] to Print Queue...")
-                jobQueueManager.addJob(bitmap, "Network Job #$jobId ($osFamily)")
+                jobQueueManager.addJob(bitmap, "Network Job #$jobId ($osFamily)", false, jobId)
             }
         } else {
             logger("[IPP] ERROR: Failed to render bitmap for Network Job #$jobId")

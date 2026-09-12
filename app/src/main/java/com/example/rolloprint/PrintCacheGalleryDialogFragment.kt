@@ -28,6 +28,14 @@ class PrintCacheGalleryDialogFragment : DialogFragment() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.apply {
+            val width = (resources.displayMetrics.widthPixels * 0.94).toInt()
+            setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+    }
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_print_cache_gallery, null)
 
